@@ -1,2 +1,14 @@
 target/
 .targets/
+
+.idea
+tmp
+**/.DS_Store
+.cache
+.tm_properties
+.classpath
+.project
+.settings
+*.sw*
+tags
+testCredentials.json
