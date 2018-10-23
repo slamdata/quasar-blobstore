@@ -6,8 +6,8 @@ import scala.collection.Seq
 import sbt._
 
 object Dependencies {
-  private val catsEffectVersion = "0.10.1"
-  private val fs2Version = "0.10.5"
+  private val catsEffectVersion = "1.0.0"
+  private val fs2Version = "1.0.0"
   private val quasarVersion = IO.read(file("./quasar-version")).trim
   private val qdataVersion = IO.read(file("./qdata-version")).trim
   private val shimsVersion = "1.2.1"
