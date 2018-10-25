@@ -27,8 +27,6 @@ import fs2.Stream
 
 abstract class AzureDatasourceSpec extends BlobstoreDatasourceSpec[IO] {
 
-  sequential
-
   val accoundName = AccountName("slamdata")
   val storageUrl = Azure.mkStdStorageUrl(accoundName)
 

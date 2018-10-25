@@ -102,7 +102,7 @@ class AzureBlobstore[F[_]: Concurrent](
     else name
 
   private def pathToOptions(path: ResourcePath): ListBlobsOptions =
-    ListBlobsOptions.DEFAULT
+    new ListBlobsOptions()
       .withMaxResults(Integer.valueOf(1000))
       .withPrefix(pathToPrefix(path))
 
