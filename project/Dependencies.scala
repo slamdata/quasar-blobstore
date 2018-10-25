@@ -6,6 +6,9 @@ import scala.collection.Seq
 import sbt._
 
 object Dependencies {
+
+  private val azureVersion = "10.1.0"
+  private val rxjavaVersion = "2.2.2"
   private val catsEffectVersion = "1.0.0"
   private val fs2Version = "1.0.0"
   private val quasarVersion = IO.read(file("./quasar-version")).trim
@@ -15,8 +18,10 @@ object Dependencies {
 
   // direct as well as transitive deps need to be in sync with quasar's deps
   def datasourceCore = Seq(
-    "com.slamdata"           %% "qdata-json"          % qdataVersion,
     "com.codecommit"         %% "shims"               % shimsVersion,
+    "com.microsoft.azure"    %  "azure-storage-blob"  % azureVersion,
+    "com.slamdata"           %% "qdata-json"          % qdataVersion,
+    "io.reactivex.rxjava2"   %  "rxjava"              % rxjavaVersion,
     "org.typelevel"          %% "cats-effect"         % catsEffectVersion,
     "org.specs2"             %% "specs2-core"         % specsVersion % Test,
     "org.specs2"             %% "specs2-scalaz"       % specsVersion % Test,
