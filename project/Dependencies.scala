@@ -11,6 +11,7 @@ object Dependencies {
   private val rxjavaVersion = "2.2.2"
   private val catsEffectVersion = "1.0.0"
   private val fs2Version = "1.0.0"
+  private val nettyVersion = "4.1.28.Final"
   private val quasarVersion = IO.read(file("./quasar-version")).trim
   private val qdataVersion = IO.read(file("./qdata-version")).trim
   private val shimsVersion = "1.2.1"
@@ -22,6 +23,9 @@ object Dependencies {
     "com.codecommit"         %% "shims"               % shimsVersion,
     "com.microsoft.azure"    %  "azure-storage-blob"  % azureVersion,
     "com.slamdata"           %% "qdata-json"          % qdataVersion,
+    // this isn't strictly necessary but takes advantage of native libs
+    // keep in sync with the version azure uses
+    "io.netty"               %  "netty-all"           % nettyVersion,
     "io.reactivex.rxjava2"   %  "rxjava"              % rxjavaVersion,
     "org.typelevel"          %% "cats-effect"         % catsEffectVersion,
     "org.slf4j"              %  "slf4j-log4j12"       % slf4jVersion % Test,
