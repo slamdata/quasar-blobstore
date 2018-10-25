@@ -14,6 +14,7 @@ object Dependencies {
   private val quasarVersion = IO.read(file("./quasar-version")).trim
   private val qdataVersion = IO.read(file("./qdata-version")).trim
   private val shimsVersion = "1.2.1"
+  private val slf4jVersion = "1.7.25"
   private val specsVersion = "4.1.2"
 
   // direct as well as transitive deps need to be in sync with quasar's deps
@@ -23,9 +24,10 @@ object Dependencies {
     "com.slamdata"           %% "qdata-json"          % qdataVersion,
     "io.reactivex.rxjava2"   %  "rxjava"              % rxjavaVersion,
     "org.typelevel"          %% "cats-effect"         % catsEffectVersion,
+    "org.slf4j"              %  "slf4j-log4j12"       % slf4jVersion % Test,
     "org.specs2"             %% "specs2-core"         % specsVersion % Test,
     "org.specs2"             %% "specs2-scalaz"       % specsVersion % Test,
-    "org.specs2"             %% "specs2-scalacheck"   % specsVersion % Test,
+    "org.specs2"             %% "specs2-scalacheck"   % specsVersion % Test
   )
 
   // we need to separate quasar out from the datasource dependencies,
