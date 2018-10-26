@@ -25,28 +25,34 @@ import java.lang.Integer
 import scala.collection.JavaConverters._
 
 import cats.effect._
-import cats.effect.concurrent.Deferred
 import cats.implicits._
 import com.microsoft.azure.storage.blob._
 import com.microsoft.azure.storage.blob.models._
 import com.microsoft.rest.v2.Context
 import fs2.Stream
 import io.reactivex._
-import io.reactivex.disposables.Disposable
 import io.reactivex.observers._
 
 object AzureBlobstore {
 
-  final class AsyncObserver[A](cb: Either[Throwable, A] => Unit)
-    extends DisposableSingleObserver[A] {
+  final class AsyncObserver[A] extends DisposableSingleObserver[A] {
+
+    @SuppressWarnings(Array("org.wartremover.warts.Null", "org.wartremover.warts.Var"))
+    private var callback: Either[Throwable, A] => Unit = _
+
+    def setCallback(cb: Either[Throwable, A] => Unit): Unit = {
+      this.callback = cb
+    }
 
     override def onStart(): Unit = ()
 
     override def onSuccess(a: A) =
-      cb(Right(a))
+      if (callback != null) callback(Right(a))
+      else ()
 
     override def onError(t: Throwable) =
-      cb(Left(t))
+      if (callback != null) callback(Left(t))
+      else ()
   }
 }
 
@@ -64,10 +70,10 @@ class AzureBlobstore[F[_]: Concurrent](
   def list(path: ResourcePath): Stream[F, (ResourceName, ResourcePathType)] = {
     val resp: F[ContainerListBlobHierarchySegmentResponse] = for {
       single <- listBlobs(None, pathToOptions(path))
-      d <- Deferred[F, Disposable]
-      r <- mkAsync(d, single.subscribe)
-      disposable <- d.get
-      _ <- F.delay(disposable.dispose)
+      r <- F.bracket(
+        F.delay(new AsyncObserver[ContainerListBlobHierarchySegmentResponse]))(
+        obs => mkAsync(obs, single.subscribe))(
+        obs => F.delay(obs.dispose()))
     } yield r
 
     Stream.eval(resp).flatMap { r =>
@@ -90,10 +96,10 @@ class AzureBlobstore[F[_]: Concurrent](
   private def listBlobs(marker: Option[String], options: ListBlobsOptions): F[Single[ContainerListBlobHierarchySegmentResponse]] =
     F.delay(containerURL.listBlobsHierarchySegment(marker.orNull, "/", options, Context.NONE))
 
-  private def mkAsync[A](d: Deferred[F, Disposable], f: SingleObserver[A] => Unit): F[A] =
-    F.asyncF[A] { cb: (Either[Throwable, A] => Unit) =>
-      val obs = new AsyncObserver(cb)
-      f(obs).pure[F] *> d.complete(obs)
+  private def mkAsync[A](observer: AsyncObserver[A], f: SingleObserver[A] => Unit): F[A] =
+    F.async[A] { cb: (Either[Throwable, A] => Unit) =>
+      observer.setCallback(cb)
+      f(observer)
     }
 
   @SuppressWarnings(Array("org.wartremover.warts.Recursion"))
@@ -103,7 +109,7 @@ class AzureBlobstore[F[_]: Concurrent](
 
   private def pathToOptions(path: ResourcePath): ListBlobsOptions =
     new ListBlobsOptions()
-      .withMaxResults(Integer.valueOf(1000))
+      .withMaxResults(Integer.valueOf(5000))
       .withPrefix(pathToPrefix(path))
 
   private def pathToPrefix(path: ResourcePath): String = {
