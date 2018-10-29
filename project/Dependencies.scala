@@ -23,8 +23,10 @@ object Dependencies {
     "com.codecommit"         %% "shims"               % shimsVersion,
     "com.microsoft.azure"    %  "azure-storage-blob"  % azureVersion,
     "com.slamdata"           %% "qdata-json"          % qdataVersion,
-    // this isn't strictly necessary but takes advantage of native libs
-    // keep in sync with the version azure uses
+    // netty-all isn't strictly necessary but takes advantage of native libs.
+    // Azure doesn't pull in libs like netty-transport-native-kqueue,
+    // netty-transport-native-unix-common and netty-transport-native-epoll.
+    // Keep nettyVersion in sync with the version that Azure pulls in.
     "io.netty"               %  "netty-all"           % nettyVersion,
     "io.reactivex.rxjava2"   %  "rxjava"              % rxjavaVersion,
     "org.typelevel"          %% "cats-effect"         % catsEffectVersion,
