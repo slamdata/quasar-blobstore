@@ -19,8 +19,9 @@ package quasar.physical.blobstore.azure
 import slamdata.Predef._
 import quasar.api.resource.ResourcePath
 import quasar.blobstore.azure._
-import quasar.connector.Datasource
-import quasar.physical.blobstore.{BlobstoreDatasource, BlobstoreDatasourceSpec}, BlobstoreDatasource._
+import quasar.connector.{Datasource, QueryResult}
+import quasar.physical.blobstore.{BlobstoreDatasource, BlobstoreDatasourceSpec}
+import BlobstoreDatasource._
 
 import cats.effect.IO
 import fs2.Stream
@@ -32,7 +33,7 @@ abstract class AzureDatasourceSpec extends BlobstoreDatasourceSpec[IO] {
 
   val cfg: AzureConfig
 
-  override def datasource: IO[Datasource[IO, Stream[IO, ?], ResourcePath]] = {
+  override def datasource: IO[Datasource[IO, Stream[IO, ?], ResourcePath, QueryResult[IO]]] = {
     Azure.mkContainerUrl[IO](cfg)
       .map(c => new AzureDatasource[IO](new AzureBlobstore(c)))
   }

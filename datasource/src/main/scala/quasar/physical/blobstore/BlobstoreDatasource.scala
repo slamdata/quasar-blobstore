@@ -17,11 +17,10 @@
 package quasar.physical.blobstore
 
 import slamdata.Predef._
-import quasar.api.QueryEvaluator
 import quasar.api.datasource.DatasourceType
 import quasar.api.resource.{ResourceName, ResourcePath, ResourcePathType}
 import quasar.blobstore.Blobstore
-import quasar.connector.{MonadResourceErr, ResourceError}
+import quasar.connector.{MonadResourceErr, QueryResult, ResourceError}
 import quasar.connector.datasource.LightweightDatasource
 import quasar.contrib.scalaz.MonadError_
 import quasar.contrib.std.errorNotImplemented
@@ -31,14 +30,13 @@ import cats.effect.IO
 import cats.syntax.applicative._
 import cats.syntax.option._
 import fs2.Stream
-import qdata.QDataEncode
 
 class BlobstoreDatasource[F[_]: Applicative: MonadResourceErr](
   val kind: DatasourceType,
   blobstore: Blobstore[F])
-  extends LightweightDatasource[F, Stream[F, ?]] {
+  extends LightweightDatasource[F, Stream[F, ?], QueryResult[F]] {
 
-  override def evaluator[R: QDataEncode]: QueryEvaluator[F, ResourcePath, Stream[F, R]] =
+  override def evaluate(path: ResourcePath): F[QueryResult[F]] =
     errorNotImplemented
 
   override def pathIsResource(path: ResourcePath): F[Boolean] =

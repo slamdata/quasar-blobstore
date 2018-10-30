@@ -19,7 +19,7 @@ package quasar.physical.blobstore
 import slamdata.Predef._
 import quasar.EffectfulQSpec
 import quasar.api.resource.{ResourceName, ResourcePath, ResourcePathType}
-import quasar.connector.Datasource
+import quasar.connector.{Datasource, QueryResult}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -33,7 +33,7 @@ abstract class BlobstoreDatasourceSpec[F[_]: Effect] extends EffectfulQSpec[F] {
 
   val F = Effect[F]
 
-  def datasource: F[Datasource[F, Stream[F, ?], ResourcePath]]
+  def datasource: F[Datasource[F, Stream[F, ?], ResourcePath, QueryResult[F]]]
 
   val spanishResourceName1 = ResourceName("El veloz murciélago hindú")
   val spanishResourcePrefix = ResourcePath.root() / ResourceName("testData") / spanishResourceName1 / ResourceName("comía feliz cardillo y kiwi") / ResourceName("La cigüeña tocaba el saxofón")
