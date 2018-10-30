@@ -23,7 +23,7 @@ import fs2.Stream
 
 trait Blobstore[F[_]] {
 
-  def list(path: ResourcePath): Stream[F, (ResourceName, ResourcePathType)]
+  def list(path: ResourcePath): F[Option[Stream[F, (ResourceName, ResourcePathType)]]]
 
   def get(path: ResourcePath): Stream[F, Byte]
 

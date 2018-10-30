@@ -67,7 +67,7 @@ class AzureBlobstore[F[_]: Concurrent](
 
   def isResource(path: ResourcePath): F[Boolean] = errorNotImplemented
 
-  def list(path: ResourcePath): Stream[F, (ResourceName, ResourcePathType)] = {
+  def list(path: ResourcePath): F[Option[Stream[F, (ResourceName, ResourcePathType)]]] = {
     val resp: F[ContainerListBlobHierarchySegmentResponse] = for {
       single <- listBlobs(None, pathToOptions(path))
       r <- F.bracket(
@@ -76,7 +76,7 @@ class AzureBlobstore[F[_]: Concurrent](
         obs => F.delay(obs.dispose()))
     } yield r
 
-    Stream.eval(resp).flatMap { r =>
+    val s = Stream.eval(resp).flatMap { r =>
       val segm = r.body.segment
       val l =
         if (segm == null) List.empty
@@ -84,6 +84,8 @@ class AzureBlobstore[F[_]: Concurrent](
           segm.blobPrefixes.asScala.map(blobPrefixToNameType(_, path))
       Stream.emits(l).covary[F]
     }
+
+    s.some.pure[F]
   }
 
   private def blobItemToNameType(i: BlobItem, path: ResourcePath): (ResourceName, ResourcePathType) =

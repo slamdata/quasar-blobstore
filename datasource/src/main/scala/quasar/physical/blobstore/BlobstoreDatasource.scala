@@ -27,8 +27,6 @@ import quasar.contrib.std.errorNotImplemented
 
 import cats.Applicative
 import cats.effect.IO
-import cats.syntax.applicative._
-import cats.syntax.option._
 import fs2.Stream
 
 class BlobstoreDatasource[F[_]: Applicative: MonadResourceErr](
@@ -44,7 +42,7 @@ class BlobstoreDatasource[F[_]: Applicative: MonadResourceErr](
 
   override def prefixedChildPaths(prefixPath: ResourcePath)
       : F[Option[Stream[F, (ResourceName, ResourcePathType)]]] =
-    blobstore.list(prefixPath).some.pure[F]
+    blobstore.list(prefixPath)
 
 }
 
