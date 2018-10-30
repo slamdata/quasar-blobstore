@@ -148,21 +148,57 @@ lazy val manifestSettings =
   packageOptions in (Compile, packageBin) +=
     Package.ManifestAttributes("Datasource-Module" -> "quasar.physical.blobstore.azure.AzureDatasourceModule$")
 
-/** Lightweight connector module.
-  */
+val azureVersion = "10.1.0"
+val rxjavaVersion = "2.2.2"
+val catsEffectVersion = "1.0.0"
+val fs2Version = "1.0.0"
+val nettyVersion = "4.1.28.Final"
+val quasarVersion = IO.read(file("./quasar-version")).trim
+val qdataVersion = IO.read(file("./qdata-version")).trim
+val shimsVersion = "1.2.1"
+val slf4jVersion = "1.7.25"
+val specsVersion = "4.1.2"
+
+// direct as well as transitive deps need to be in sync with quasar's deps
+lazy val datasourceCoreDeps = Seq(
+  "com.codecommit"         %% "shims"               % shimsVersion,
+  "com.microsoft.azure"    %  "azure-storage-blob"  % azureVersion,
+  "com.slamdata"           %% "qdata-json"          % qdataVersion,
+  // netty-all isn't strictly necessary but takes advantage of native libs.
+  // Azure doesn't pull in libs like netty-transport-native-kqueue,
+  // netty-transport-native-unix-common and netty-transport-native-epoll.
+  // Keep nettyVersion in sync with the version that Azure pulls in.
+  "io.netty"               %  "netty-all"           % nettyVersion,
+  "io.reactivex.rxjava2"   %  "rxjava"              % rxjavaVersion,
+  "org.typelevel"          %% "cats-effect"         % catsEffectVersion,
+  "org.slf4j"              %  "slf4j-log4j12"       % slf4jVersion % Test,
+  "org.specs2"             %% "specs2-core"         % specsVersion % Test,
+  "org.specs2"             %% "specs2-scalaz"       % specsVersion % Test,
+  "org.specs2"             %% "specs2-scalacheck"   % specsVersion % Test
+)
+
 lazy val datasource = project
   .settings(name := "quasar-blobstore")
   .settings(commonSettings)
   .settings(targetSettings)
   .settings(resolvers += Resolver.bintrayRepo("slamdata-inc", "maven-public"))
   .settings(
-    libraryDependencies ++= Dependencies.datasource,
+    // we need to separate quasar out from the datasource dependencies,
+    // to keep from packaging it and its dependencies.
+    libraryDependencies ++= datasourceCoreDeps ++ Seq(
+      "com.slamdata" %% "quasar-api-internal"        % quasarVersion,
+      "com.slamdata" %% "quasar-api-internal"        % quasarVersion % Test classifier "tests",
+      "com.slamdata" %% "quasar-foundation-internal" % quasarVersion,
+      "com.slamdata" %% "quasar-foundation-internal" % quasarVersion % Test classifier "tests",
+      "com.slamdata" %% "quasar-connector-internal"  % quasarVersion,
+      "com.slamdata" %% "quasar-connector-internal"  % quasarVersion % Test classifier "tests",
+    ),
     wartremoverWarnings in (Compile, compile) --= Seq(
       Wart.AsInstanceOf,
       Wart.Equals,
       Wart.Overloading))
   .settings(githubReleaseSettings)
   .settings(excludeTypelevelScalaLibrary)
-  .settings(AssembleDatasource.setAssemblyKey)
+  .settings(AssembleDatasource.setAssemblyKey(datasourceCoreDeps))
   .settings(manifestSettings)
   .enablePlugins(AutomateHeaderPlugin)

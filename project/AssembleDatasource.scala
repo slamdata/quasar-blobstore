@@ -13,6 +13,7 @@ import java.lang.Runtime
 import io.circe.Json
 import sbt.{Cache => _, MavenRepository => _, Tags => _, Task => _, _}
 import sbt.Keys._
+import sbt.librarymanagement.ModuleID
 import scalaz._, Scalaz._
 import Tags.Parallel
 import scalaz.concurrent.Task
@@ -28,7 +29,7 @@ object AssembleDatasource {
   def moduleIdToDependency(moduleId: ModuleID): Dependency =
     Dependency(Module(moduleId.organization, moduleId.name + "_2.12"), moduleId.revision)
 
-  val setAssemblyKey =
+  def setAssemblyKey(datasourceCoreDeps: Seq[ModuleID]) =
     assembleDatasource  in Compile := {
       // the location of the datasource jar itself. we make sure
       // it's been built by calling `package` here.
@@ -68,7 +69,7 @@ object AssembleDatasource {
       // dependencies are already present in the user's
       // `plugins` folder.
       val resolution =
-        Resolution(Dependencies.datasourceCore.map(moduleIdToDependency).toSet)
+        Resolution(datasourceCoreDeps.map(moduleIdToDependency).toSet)
 
       // we're using datasourcePluginsFolder as a coursier cache while fetching
       // our dependencies, because that's the format of a `plugins` folder.
