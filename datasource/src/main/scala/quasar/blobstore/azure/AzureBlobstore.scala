@@ -76,16 +76,14 @@ class AzureBlobstore[F[_]: Concurrent](
         obs => F.delay(obs.dispose()))
     } yield r
 
-    val s = Stream.eval(resp).flatMap { r =>
-      val segm = r.body.segment
-      val l =
-        if (segm == null) List.empty
-        else segm.blobItems.asScala.map(blobItemToNameType(_, path)) ++
+    resp.map(r => r.body.segment).map { segm =>
+      if (segm == null) None
+      else {
+        val l = segm.blobItems.asScala.map(blobItemToNameType(_, path)) ++
           segm.blobPrefixes.asScala.map(blobPrefixToNameType(_, path))
-      Stream.emits(l).covary[F]
+        Stream.emits(l).covary[F].some
+      }
     }
-
-    s.some.pure[F]
   }
 
   private def blobItemToNameType(i: BlobItem, path: ResourcePath): (ResourceName, ResourcePathType) =
