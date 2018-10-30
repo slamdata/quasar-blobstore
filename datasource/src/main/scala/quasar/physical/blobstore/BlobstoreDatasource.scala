@@ -20,22 +20,28 @@ import slamdata.Predef._
 import quasar.api.datasource.DatasourceType
 import quasar.api.resource.{ResourceName, ResourcePath, ResourcePathType}
 import quasar.blobstore.Blobstore
-import quasar.connector.{MonadResourceErr, QueryResult, ResourceError}
+import quasar.connector.{MonadResourceErr, ParsableType, QueryResult, ResourceError}, ParsableType.JsonVariant
 import quasar.connector.datasource.LightweightDatasource
 import quasar.contrib.scalaz.MonadError_
 import quasar.contrib.std.errorNotImplemented
 
 import cats.Applicative
 import cats.effect.IO
-import fs2.Stream
+import cats.syntax.applicative._
+import fs2.{RaiseThrowable, Stream}
 
-class BlobstoreDatasource[F[_]: Applicative: MonadResourceErr](
+class BlobstoreDatasource[F[_]: Applicative: MonadResourceErr: RaiseThrowable](
   val kind: DatasourceType,
   blobstore: Blobstore[F])
   extends LightweightDatasource[F, Stream[F, ?], QueryResult[F]] {
 
-  override def evaluate(path: ResourcePath): F[QueryResult[F]] =
-    errorNotImplemented
+  val jvar = JsonVariant.LineDelimited
+
+  override def evaluate(path: ResourcePath): F[QueryResult[F]] = {
+    val bytes = blobstore.get(path)
+      .flatMap(buf => Stream.emits(buf.array()))
+    QueryResult.typed(ParsableType.json(jvar, false), bytes).pure[F]
+  }
 
   override def pathIsResource(path: ResourcePath): F[Boolean] =
     errorNotImplemented
