@@ -31,73 +31,19 @@ import cats.implicits._
 import com.microsoft.azure.storage.blob._
 import com.microsoft.azure.storage.blob.models._
 import com.microsoft.rest.v2.Context
-import fs2.concurrent.Queue
 import fs2.{RaiseThrowable, Stream}
 import io.reactivex._
-import io.reactivex.functions.{Action, Consumer}
-import io.reactivex.observers._
-
-object AzureBlobstore {
-
-  final class AsyncConsumer[A] {
-
-    @SuppressWarnings(Array("org.wartremover.warts.Null", "org.wartremover.warts.Var"))
-    private var callback: Either[Throwable, Option[A]] => Unit = _
-
-    def setCallback(cb: Either[Throwable, Option[A]] => Unit): Unit = {
-      this.callback = cb
-    }
-
-    def onNext: Consumer[A] = { a =>
-      if (callback != null) callback(Right(a.some))
-      else ()
-    }
-
-    def onError: Consumer[Throwable] = { t =>
-      if (callback != null) callback(Left(t))
-      else ()
-    }
-
-    def onComplete: Action = () => {
-      if (callback != null) callback(Right(none))
-      else ()
-    }
-
-  }
-
-  final class AsyncObserver[A] extends DisposableSingleObserver[A] {
-
-    @SuppressWarnings(Array("org.wartremover.warts.Null", "org.wartremover.warts.Var"))
-    private var callback: Either[Throwable, A] => Unit = _
-
-    def setCallback(cb: Either[Throwable, A] => Unit): Unit = {
-      this.callback = cb
-    }
-
-    override def onStart(): Unit = ()
-
-    override def onSuccess(a: A) =
-      if (callback != null) callback(Right(a))
-      else ()
-
-    override def onError(t: Throwable) =
-      if (callback != null) callback(Left(t))
-      else ()
-  }
-}
 
 class AzureBlobstore[F[_]: ConcurrentEffect: MonadResourceErr: RaiseThrowable](
   containerURL: ContainerURL) extends Blobstore[F] {
-
-  import AzureBlobstore._
 
   private val F = ConcurrentEffect[F]
 
   def get(path: ResourcePath): Stream[F, ByteBuffer] = {
     val bufs: F[Stream[F, ByteBuffer]] = for {
       single <- download(pathToAzurePath(path))
-      r <- singleToAsync(single)
-      s <- F.delay(flowableToStream(r.body(new ReliableDownloadOptions)))
+      r <- rx.singleToAsync(single)
+      s <- F.delay(rx.flowableToStream(r.body(new ReliableDownloadOptions)))
     } yield s
 
     Stream.eval(bufs).flatten
@@ -112,7 +58,7 @@ class AzureBlobstore[F[_]: ConcurrentEffect: MonadResourceErr: RaiseThrowable](
   def list(path: ResourcePath): F[Option[Stream[F, (ResourceName, ResourcePathType)]]] = {
     val resp: F[ContainerListBlobHierarchySegmentResponse] = for {
       single <- listBlobs(None, pathToOptions(path))
-      r <- singleToAsync(single)
+      r <- rx.singleToAsync(single)
     } yield r
 
     val s = Stream.eval(resp).flatMap { r =>
@@ -142,12 +88,6 @@ class AzureBlobstore[F[_]: ConcurrentEffect: MonadResourceErr: RaiseThrowable](
   private def listBlobs(marker: Option[String], options: ListBlobsOptions): F[Single[ContainerListBlobHierarchySegmentResponse]] =
     F.delay(containerURL.listBlobsHierarchySegment(marker.orNull, "/", options, Context.NONE))
 
-  private def mkAsync[A](observer: AsyncObserver[A], f: SingleObserver[A] => Unit): F[A] =
-    F.async[A] { cb: (Either[Throwable, A] => Unit) =>
-      observer.setCallback(cb)
-      f(observer)
-    }
-
   @SuppressWarnings(Array("org.wartremover.warts.Recursion"))
   private def normalize(name: String): String =
     if (name.endsWith("/")) normalize(name.substring(0, name.length - 1))
@@ -173,31 +113,4 @@ class AzureBlobstore[F[_]: ConcurrentEffect: MonadResourceErr: RaiseThrowable](
     val ns = normalize(s)
     ns.substring(ns.lastIndexOf('/') + 1)
   }
-
-  private def singleToAsync[A](single: Single[A]): F[A] =
-    F.bracket(
-      F.delay(new AsyncObserver[A]))(
-      obs => mkAsync(obs, single.subscribe))(
-      obs => F.delay(obs.dispose()))
-
-  def flowableToStream[A](f: Flowable[A]): Stream[F, A] =
-    handlerToStreamUnNoneTerminate(flowableToHandler(f))
-
-  def flowableToHandler[A](flowable: Flowable[A]): (Either[Throwable, Option[A]] => Unit) => Unit = { cb =>
-    val cons = new AsyncConsumer[A]
-    cons.setCallback(cb)
-    flowable.subscribe(cons.onNext, cons.onError, cons.onComplete)
-  }
-
-  def handlerToStreamUnNoneTerminate[A](
-      handler: (Either[Throwable, Option[A]] => Unit) => Unit): Stream[F, A] =
-    for {
-      q <- Stream.eval(Queue.unbounded[F, Either[Throwable, Option[A]]])
-      _ <- Stream.eval(F.delay(handler(enqueueEvent(q))))
-      a <- q.dequeue.rethrow.unNoneTerminate
-    } yield a
-
-  def enqueueEvent[A](q: Queue[F, A])(event: A): Unit =
-    F.runAsync(q.enqueue1(event))(_ => IO.unit).unsafeRunSync
-
 }
