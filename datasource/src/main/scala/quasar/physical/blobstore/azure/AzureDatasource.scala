@@ -14,18 +14,19 @@
  * limitations under the License.
  */
 
-package quasar.blobstore
+package quasar.physical.blobstore.azure
 
-import slamdata.Predef._
-import quasar.api.resource.{ResourceName, ResourcePath, ResourcePathType}
+import quasar.api.datasource.DatasourceType
+import quasar.blobstore.azure.AzureBlobstore
+import quasar.connector.MonadResourceErr
+import quasar.physical.blobstore.BlobstoreDatasource
 
-import fs2.Stream
+import cats.Applicative
+import eu.timepit.refined.auto._
 
-trait Blobstore[F[_]] {
+class AzureDatasource[F[_]: Applicative: MonadResourceErr](azureBlobstore: AzureBlobstore[F])
+  extends BlobstoreDatasource[F](AzureDatasource.dsType, azureBlobstore)
 
-  def list(path: ResourcePath): F[Option[Stream[F, (ResourceName, ResourcePathType)]]]
-
-  def get(path: ResourcePath): Stream[F, Byte]
-
-  def isResource(path: ResourcePath): F[Boolean]
+object AzureDatasource {
+  val dsType = DatasourceType("azure", 1L)
 }

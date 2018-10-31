@@ -14,18 +14,16 @@
  * limitations under the License.
  */
 
-package quasar.blobstore
+package quasar.blobstore.azure
 
 import slamdata.Predef._
-import quasar.api.resource.{ResourceName, ResourcePath, ResourcePathType}
 
-import fs2.Stream
+final case class ContainerName(value: String)
+final case class StorageUrl(value: String)
 
-trait Blobstore[F[_]] {
+final case class AccountName(value: String)
+final case class AccountKey(value: String)
 
-  def list(path: ResourcePath): F[Option[Stream[F, (ResourceName, ResourcePathType)]]]
+final case class AzureCredentials(accountName: AccountName, accountKey: AccountKey)
 
-  def get(path: ResourcePath): Stream[F, Byte]
-
-  def isResource(path: ResourcePath): F[Boolean]
-}
+final case class AzureConfig(containerName: ContainerName, credentials: Option[AzureCredentials], storageUrl: StorageUrl)

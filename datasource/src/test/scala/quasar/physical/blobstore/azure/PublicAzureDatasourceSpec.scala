@@ -14,18 +14,13 @@
  * limitations under the License.
  */
 
-package quasar.blobstore
+package quasar.physical.blobstore.azure
 
-import slamdata.Predef._
-import quasar.api.resource.{ResourceName, ResourcePath, ResourcePathType}
+import slamdata.Predef.None
+import quasar.blobstore.azure.{AzureConfig, ContainerName}
 
-import fs2.Stream
+class PublicAzureDatasourceSpec extends AzureDatasourceSpec {
 
-trait Blobstore[F[_]] {
-
-  def list(path: ResourcePath): F[Option[Stream[F, (ResourceName, ResourcePathType)]]]
-
-  def get(path: ResourcePath): Stream[F, Byte]
-
-  def isResource(path: ResourcePath): F[Boolean]
+  override val cfg =
+    AzureConfig(ContainerName("test"), None, storageUrl)
 }
