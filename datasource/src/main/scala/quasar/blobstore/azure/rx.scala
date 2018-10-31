@@ -22,34 +22,19 @@ import cats.effect._
 import cats.implicits._
 import fs2.{RaiseThrowable, Stream}
 import fs2.concurrent.Queue
+import io.reactivex.disposables.Disposable
 import io.reactivex.{Flowable, Single, SingleObserver}
 import io.reactivex.functions.{Action, Consumer}
 import io.reactivex.observers.DisposableSingleObserver
 
 object rx {
-  final class AsyncConsumer[A] {
+  final class AsyncConsumer[A](cb: Either[Throwable, Option[A]] => Unit) {
 
-    @SuppressWarnings(Array("org.wartremover.warts.Null", "org.wartremover.warts.Var"))
-    private var callback: Either[Throwable, Option[A]] => Unit = _
+    def onNext: Consumer[A] = { a => cb(Right(a.some)) }
 
-    def setCallback(cb: Either[Throwable, Option[A]] => Unit): Unit = {
-      this.callback = cb
-    }
+    def onError: Consumer[Throwable] = { t => cb(Left(t)) }
 
-    def onNext: Consumer[A] = { a =>
-      if (callback != null) callback(Right(a.some))
-      else ()
-    }
-
-    def onError: Consumer[Throwable] = { t =>
-      if (callback != null) callback(Left(t))
-      else ()
-    }
-
-    def onComplete: Action = () => {
-      if (callback != null) callback(Right(none))
-      else ()
-    }
+    def onComplete: Action = () => { cb(Right(none)) }
   }
 
   final class AsyncObserver[A] extends DisposableSingleObserver[A] {
@@ -75,18 +60,17 @@ object rx {
   def flowableToStream[F[_]: ConcurrentEffect: RaiseThrowable, A](f: Flowable[A]): Stream[F, A] =
     handlerToStreamUnNoneTerminate(flowableToHandler(f))
 
-  def flowableToHandler[A](flowable: Flowable[A]): (Either[Throwable, Option[A]] => Unit) => Unit = { cb =>
-    val cons = new AsyncConsumer[A]
-    cons.setCallback(cb)
+  def flowableToHandler[A](flowable: Flowable[A]): (Either[Throwable, Option[A]] => Unit) => Disposable = { cb =>
+    val cons = new AsyncConsumer[A](cb)
     flowable.subscribe(cons.onNext, cons.onError, cons.onComplete)
   }
 
   def handlerToStreamUnNoneTerminate[F[_]: RaiseThrowable, A](
-      handler: (Either[Throwable, Option[A]] => Unit) => Unit)(
+      handler: (Either[Throwable, Option[A]] => Unit) => Disposable)(
       implicit F: ConcurrentEffect[F]): Stream[F, A] =
     for {
       q <- Stream.eval(Queue.unbounded[F, Either[Throwable, Option[A]]])
-      _ <- Stream.eval(F.delay(handler(enqueueEvent(q))))
+      _ <- Stream.bracket(F.delay(handler(enqueueEvent(q))))(d => F.delay(d.dispose))
       a <- q.dequeue.rethrow.unNoneTerminate
     } yield a
 
