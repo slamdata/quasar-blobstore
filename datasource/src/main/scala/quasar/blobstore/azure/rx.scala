@@ -16,25 +16,32 @@
 
 package quasar.blobstore.azure
 
-import slamdata.Predef.{Array, Either, Left, Option, Right, SuppressWarnings, Throwable, Unit}
+import slamdata.Predef._
 
 import cats.effect._
 import cats.implicits._
+import eu.timepit.refined.api.Refined
+import eu.timepit.refined.numeric.Positive
 import fs2.{RaiseThrowable, Stream}
 import fs2.concurrent.Queue
-import io.reactivex.disposables.Disposable
 import io.reactivex.{Flowable, Single, SingleObserver}
-import io.reactivex.functions.{Action, Consumer}
 import io.reactivex.observers.DisposableSingleObserver
+import io.reactivex.subscribers.ResourceSubscriber
 
 object rx {
-  final class AsyncConsumer[A](cb: Either[Throwable, Option[A]] => Unit) {
+  final class AsyncSubscriber[A](cb: Either[Throwable, Option[A]] => Unit) extends ResourceSubscriber[A] {
 
-    def onNext: Consumer[A] = { a => cb(Right(a.some)) }
+    def onNext(a: A): Unit = cb(Right(a.some))
 
-    def onError: Consumer[Throwable] = { t => cb(Left(t)) }
+    def onError(t: Throwable): Unit = {
+      cb(Left(t))
+      dispose
+    }
 
-    def onComplete: Action = () => { cb(Right(none)) }
+    def onComplete: Unit = {
+      cb(Right(none))
+      dispose
+    }
   }
 
   final class AsyncObserver[A] extends DisposableSingleObserver[A] {
@@ -57,20 +64,23 @@ object rx {
       else ()
   }
 
-  def flowableToStream[F[_]: ConcurrentEffect: RaiseThrowable, A](f: Flowable[A]): Stream[F, A] =
-    handlerToStream(flowableToHandler(f))
+  def flowableToStream[F[_]: ConcurrentEffect: RaiseThrowable, A](
+      f: Flowable[A],
+      maxQueueSize: Int Refined Positive): Stream[F, A] =
+    handlerToStream(flowableToHandler(f), maxQueueSize)
 
-  def flowableToHandler[A](flowable: Flowable[A]): (Either[Throwable, Option[A]] => Unit) => Disposable = { cb =>
-    val cons = new AsyncConsumer[A](cb)
-    flowable.subscribe(cons.onNext, cons.onError, cons.onComplete)
+  def flowableToHandler[A](flowable: Flowable[A]): (Either[Throwable, Option[A]] => Unit) => Unit = { cb =>
+    val sub = new AsyncSubscriber[A](cb)
+    flowable.subscribe(sub)
   }
 
   def handlerToStream[F[_]: RaiseThrowable, A](
-      handler: (Either[Throwable, Option[A]] => Unit) => Disposable)(
+      handler: (Either[Throwable, Option[A]] => Unit) => Unit,
+      maxQueueSize: Int Refined Positive)(
       implicit F: ConcurrentEffect[F]): Stream[F, A] =
     for {
-      q <- Stream.eval(Queue.unbounded[F, Either[Throwable, Option[A]]])
-      _ <- Stream.bracket(F.delay(handler(enqueueEvent(q))))(d => F.delay(d.dispose))
+      q <- Stream.eval(Queue.bounded[F, Either[Throwable, Option[A]]](maxQueueSize.value))
+      _ <- Stream.eval(F.delay(handler(enqueueEvent(q))))
       a <- q.dequeue.rethrow.unNoneTerminate
     } yield a
 

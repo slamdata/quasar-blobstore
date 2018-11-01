@@ -35,7 +35,8 @@ import fs2.{RaiseThrowable, Stream}
 import io.reactivex._
 
 class AzureBlobstore[F[_]: ConcurrentEffect: MonadResourceErr: RaiseThrowable](
-  containerURL: ContainerURL) extends Blobstore[F] {
+  containerURL: ContainerURL,
+  maxQueueSize: MaxQueueSize) extends Blobstore[F] {
 
   private val F = ConcurrentEffect[F]
 
@@ -43,7 +44,7 @@ class AzureBlobstore[F[_]: ConcurrentEffect: MonadResourceErr: RaiseThrowable](
     val bufs: F[Stream[F, ByteBuffer]] = for {
       single <- download(pathToAzurePath(path))
       r <- rx.singleToAsync(single)
-      s <- F.delay(rx.flowableToStream(r.body(new ReliableDownloadOptions)))
+      s <- F.delay(rx.flowableToStream(r.body(new ReliableDownloadOptions), maxQueueSize.value))
     } yield s
 
     Stream.eval(bufs).flatten
