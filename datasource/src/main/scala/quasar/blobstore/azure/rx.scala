@@ -58,14 +58,14 @@ object rx {
   }
 
   def flowableToStream[F[_]: ConcurrentEffect: RaiseThrowable, A](f: Flowable[A]): Stream[F, A] =
-    handlerToStreamUnNoneTerminate(flowableToHandler(f))
+    handlerToStream(flowableToHandler(f))
 
   def flowableToHandler[A](flowable: Flowable[A]): (Either[Throwable, Option[A]] => Unit) => Disposable = { cb =>
     val cons = new AsyncConsumer[A](cb)
     flowable.subscribe(cons.onNext, cons.onError, cons.onComplete)
   }
 
-  def handlerToStreamUnNoneTerminate[F[_]: RaiseThrowable, A](
+  def handlerToStream[F[_]: RaiseThrowable, A](
       handler: (Either[Throwable, Option[A]] => Unit) => Disposable)(
       implicit F: ConcurrentEffect[F]): Stream[F, A] =
     for {
