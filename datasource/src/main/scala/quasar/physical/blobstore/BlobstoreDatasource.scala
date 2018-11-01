@@ -23,7 +23,6 @@ import quasar.blobstore.Blobstore
 import quasar.connector.{MonadResourceErr, ParsableType, QueryResult, ResourceError}, ParsableType.JsonVariant
 import quasar.connector.datasource.LightweightDatasource
 import quasar.contrib.scalaz.MonadError_
-import quasar.contrib.std.errorNotImplemented
 
 import cats.Applicative
 import cats.effect.IO
@@ -44,7 +43,7 @@ class BlobstoreDatasource[F[_]: Applicative: MonadResourceErr: RaiseThrowable](
   }
 
   override def pathIsResource(path: ResourcePath): F[Boolean] =
-    errorNotImplemented
+    blobstore.isResource(path)
 
   override def prefixedChildPaths(prefixPath: ResourcePath)
       : F[Option[Stream[F, (ResourceName, ResourcePathType)]]] =

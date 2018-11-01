@@ -20,7 +20,6 @@ import slamdata.Predef._
 import quasar.api.resource.{ResourceName, ResourcePath, ResourcePathType}
 import quasar.blobstore.Blobstore
 import quasar.connector.{MonadResourceErr, ResourceError}
-import quasar.contrib.std.errorNotImplemented
 
 import java.lang.Integer
 import java.nio.ByteBuffer
@@ -41,7 +40,7 @@ class AzureBlobstore[F[_]: ConcurrentEffect: MonadResourceErr: RaiseThrowable](
 
   def get(path: ResourcePath): Stream[F, ByteBuffer] = {
     val bufs: F[Stream[F, ByteBuffer]] = for {
-      single <- download(pathToAzurePath(path))
+      single <- download(pathToAzurePath(path), BlobRange.DEFAULT)
       r <- rx.singleToAsync(single)
       s <- F.delay(rx.flowableToStream(r.body(new ReliableDownloadOptions)))
     } yield s
@@ -53,7 +52,16 @@ class AzureBlobstore[F[_]: ConcurrentEffect: MonadResourceErr: RaiseThrowable](
       }
   }
 
-  def isResource(path: ResourcePath): F[Boolean] = errorNotImplemented
+  def isResource(path: ResourcePath): F[Boolean] = {
+    val res: F[Boolean] = for {
+      single <- download(pathToAzurePath(path), new BlobRange().withCount(java.lang.Long.valueOf(0L)))
+      _ <- rx.singleToAsync(single)
+    } yield true
+
+    res.recover {
+      case _: StorageException => false
+    }
+  }
 
   def list(path: ResourcePath): F[Option[Stream[F, (ResourceName, ResourcePathType)]]] = {
     val resp: F[ContainerListBlobHierarchySegmentResponse] = for {
@@ -77,9 +85,9 @@ class AzureBlobstore[F[_]: ConcurrentEffect: MonadResourceErr: RaiseThrowable](
   private def blobPrefixToNameType(p: BlobPrefix, path: ResourcePath): (ResourceName, ResourcePathType) =
     (ResourceName(simpleName(p.name)), ResourcePathType.Prefix)
 
-  private def download(path: String): F[Single[DownloadResponse]] = {
+  private def download(path: String, range: BlobRange): F[Single[DownloadResponse]] = {
     val blobUrl = containerURL.createBlobURL(path)
-    F.delay(blobUrl.download(BlobRange.DEFAULT, BlobAccessConditions.NONE, false, Context.NONE))
+    F.delay(blobUrl.download(range, BlobAccessConditions.NONE, false, Context.NONE))
   }
 
   @SuppressWarnings(Array("org.wartremover.warts.Null"))
