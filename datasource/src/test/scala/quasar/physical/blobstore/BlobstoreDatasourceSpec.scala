@@ -39,6 +39,9 @@ abstract class BlobstoreDatasourceSpec[F[_]: Effect] extends EffectfulQSpec[F] {
 
   def datasource: F[Datasource[F, Stream[F, ?], ResourcePath, QueryResult[F]]]
 
+  val nonExistentPath =
+    ResourcePath.root() / ResourceName("does") / ResourceName("not") / ResourceName("exist")
+
   val spanishResourceName1 = ResourceName("El veloz murciélago hindú")
   val spanishResourcePrefix = ResourcePath.root() / ResourceName("testData") / spanishResourceName1 / ResourceName("comía feliz cardillo y kiwi") / ResourceName("La cigüeña tocaba el saxofón")
   val spanishResourceLeaf = ResourceName("detrás del palenque de paja")
@@ -66,6 +69,10 @@ abstract class BlobstoreDatasourceSpec[F[_]: Effect] extends EffectfulQSpec[F] {
           ResourceName("extraSmallZips.data") -> ResourcePathType.leafResource,
           ResourceName("prefix3") -> ResourcePathType.prefix,
           ResourceName("testdata") -> ResourcePathType.prefix))
+    }
+
+    "return none for non-existing path" >>* {
+      assertPrefixedChildPathsNone(nonExistentPath)
     }
   }
 
@@ -113,6 +120,12 @@ abstract class BlobstoreDatasourceSpec[F[_]: Effect] extends EffectfulQSpec[F] {
       res <- OptionT(ds.prefixedChildPaths(path))
         .getOrElseF(F.raiseError(new Exception(s"Failed to list resources under $path")))
         .flatMap(_.compile.toList).map { _ must_== expected }
+    } yield res
+
+  def assertPrefixedChildPathsNone(path: ResourcePath) =
+    for {
+      ds <- datasource
+      res <- ds.prefixedChildPaths(path).map { _ must_== None }
     } yield res
 
   def assertResultBytes(
