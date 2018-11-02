@@ -36,7 +36,13 @@ import fs2.Stream
 import scalaz.{NonEmptyList, \/}
 import scalaz.syntax.either._
 
-class AzureDatasourceModule extends LightweightDatasourceModule {
+object AzureDatasourceModule extends LightweightDatasourceModule {
+
+  val redactedCreds =
+    AzureCredentials(
+      AccountName("<REDACTED>"),
+      AccountKey("<REDACTED>"))
+
   override def kind: DatasourceType = AzureDatasource.dsType
 
   override def lightweightDatasource[F[_]: ConcurrentEffect: ContextShift: MonadResourceErr: Timer](
@@ -45,7 +51,7 @@ class AzureDatasourceModule extends LightweightDatasourceModule {
       : F[InitializationError[Json] \/ Disposable[F, Datasource[F, Stream[F, ?], ResourcePath, QueryResult[F]]]] =
     json.as[AzureConfig].result match {
       case Right(cfg) =>
-         AzureDatasource.mk(cfg).map(d => Disposable(d.asDsType, Applicative[F].unit).right)
+        AzureDatasource.mk(cfg).map(d => Disposable(d.asDsType, Applicative[F].unit).right)
       case Left((msg, _)) =>
         DatasourceError
           .invalidConfiguration[Json, InitializationError[Json]](kind, json, NonEmptyList(msg))
@@ -53,5 +59,8 @@ class AzureDatasourceModule extends LightweightDatasourceModule {
 
     }
 
-  override def sanitizeConfig(config: Json): Json = ???
+  override def sanitizeConfig(config: Json): Json =
+    config.as[AzureConfig].result.toOption.map(cfg =>
+      cfg.copy(credentials = cfg.credentials.map(_ => redactedCreds))
+    ).map(json.codecConfig.encode).getOrElse(Json.jEmptyObject)
 }
