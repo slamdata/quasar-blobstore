@@ -16,22 +16,24 @@
 
 package quasar.blobstore.azure
 
-import argonaut._, Argonaut._
+import argonaut._, Argonaut._, ArgonautRefined._
 
 object json {
   implicit val decodeContainerName: DecodeJson[ContainerName] = jdecode1(ContainerName(_))
   implicit val decodeStorageUrl: DecodeJson[StorageUrl] = jdecode1(StorageUrl(_))
   implicit val decodeAccountName: DecodeJson[AccountName] = jdecode1(AccountName(_))
   implicit val decodeAccountKey: DecodeJson[AccountKey] = jdecode1(AccountKey(_))
+  implicit val decodeMaxQueueSize: DecodeJson[MaxQueueSize] = jdecode1(MaxQueueSize(_))
 
   implicit val encodeContainerName: EncodeJson[ContainerName] = jencode1(_.value)
   implicit val encodeStorageUrl: EncodeJson[StorageUrl] = jencode1(_.value)
   implicit val encodeAccountName: EncodeJson[AccountName] = jencode1(_.value)
   implicit val encodeAccountKey: EncodeJson[AccountKey] = jencode1(_.value)
+  implicit val encodeMaxQueueSize: EncodeJson[MaxQueueSize] = jencode1(_.value)
 
-  implicit val codecCedentials: CodecJson[AzureCredentials] =
+  implicit val codecCredentials: CodecJson[AzureCredentials] =
     casecodec2(AzureCredentials.apply, AzureCredentials.unapply)("accountName", "accountKey")
 
   implicit val codecConfig: CodecJson[AzureConfig] =
-    casecodec3(AzureConfig.apply, AzureConfig.unapply)("container", "credentials", "storageUrl")
+    casecodec4(AzureConfig.apply, AzureConfig.unapply)("container", "credentials", "storageUrl", "maxQueueSize")
 }

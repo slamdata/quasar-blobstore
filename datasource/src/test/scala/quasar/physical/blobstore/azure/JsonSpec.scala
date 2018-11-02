@@ -19,8 +19,8 @@ package quasar.physical.blobstore.azure
 import slamdata.Predef._
 import quasar.blobstore.azure._, json._
 
-import argonaut._
-import Argonaut._
+import argonaut._, Argonaut._
+import eu.timepit.refined.auto._
 import org.specs2.mutable.Specification
 
 class JsonSpec extends Specification {
@@ -33,7 +33,8 @@ class JsonSpec extends Specification {
           |{
           |  "container": "mycontainer",
           |  "credentials": { "accountName": "myname", "accountKey": "mykey" },
-          |  "storageUrl": "https://myaccount.blob.core.windows.net/"
+          |  "storageUrl": "https://myaccount.blob.core.windows.net/",
+          |  "maxQueueSize": 10
           |}
         """.stripMargin
 
@@ -41,7 +42,8 @@ class JsonSpec extends Specification {
         AzureConfig(
           ContainerName("mycontainer"),
           Some(AzureCredentials(AccountName("myname"), AccountKey("mykey"))),
-          Azure.mkStdStorageUrl(AccountName("myaccount"))))
+          Azure.mkStdStorageUrl(AccountName("myaccount")),
+          MaxQueueSize(10)))
     }
 
     "succeeds reading config without credentials" >> {
@@ -49,7 +51,8 @@ class JsonSpec extends Specification {
         """
           |{
           |  "container": "mycontainer",
-          |  "storageUrl": "https://myaccount.blob.core.windows.net/"
+          |  "storageUrl": "https://myaccount.blob.core.windows.net/",
+          |  "maxQueueSize": 10
           |}
         """.stripMargin
 
@@ -57,7 +60,8 @@ class JsonSpec extends Specification {
         AzureConfig(
           ContainerName("mycontainer"),
           None,
-          Azure.mkStdStorageUrl(AccountName("myaccount"))))
+          Azure.mkStdStorageUrl(AccountName("myaccount")),
+          MaxQueueSize(10)))
     }
 
     "fails reading config with incomplete credentials" >> {
@@ -66,7 +70,21 @@ class JsonSpec extends Specification {
           |{
           |  "container": "mycontainer",
           |  "credentials": { "accountName":"myname" },
-          |  "storageUrl": "https://myaccount.blob.core.windows.net/"
+          |  "storageUrl": "https://myaccount.blob.core.windows.net/",
+          |  "maxQueueSize": 10
+          |}
+        """.stripMargin
+
+      s.decodeOption[AzureConfig] must_=== None
+    }
+
+    "fails reading config with non-positive maxQueueSize" >> {
+      val s =
+        """
+          |{
+          |  "container": "mycontainer",
+          |  "storageUrl": "https://myaccount.blob.core.windows.net/",
+          |  "maxQueueSize": 0
           |}
         """.stripMargin
 
