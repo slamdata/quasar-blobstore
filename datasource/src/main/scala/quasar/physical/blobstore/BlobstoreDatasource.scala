@@ -20,7 +20,8 @@ import slamdata.Predef._
 import quasar.api.datasource.DatasourceType
 import quasar.api.resource.{ResourceName, ResourcePath, ResourcePathType}
 import quasar.blobstore.Blobstore
-import quasar.connector.{MonadResourceErr, ParsableType, QueryResult, ResourceError}, ParsableType.JsonVariant
+import quasar.connector._
+import ParsableType.JsonVariant
 import quasar.connector.datasource.LightweightDatasource
 import quasar.contrib.scalaz.MonadError_
 import quasar.contrib.std.errorNotImplemented
@@ -49,6 +50,7 @@ class BlobstoreDatasource[F[_]: Applicative: MonadResourceErr: RaiseThrowable](
       : F[Option[Stream[F, (ResourceName, ResourcePathType)]]] =
     blobstore.list(prefixPath)
 
+  def asDsType: Datasource[F, Stream[F, ?], ResourcePath, QueryResult[F]] = this
 }
 
 object BlobstoreDatasource {

@@ -35,8 +35,6 @@ abstract class AzureDatasourceSpec extends BlobstoreDatasourceSpec[IO] {
 
   val cfg: AzureConfig
 
-  override def datasource: IO[Datasource[IO, Stream[IO, ?], ResourcePath, QueryResult[IO]]] = {
-    Azure.mkContainerUrl[IO](cfg)
-      .map(c => new AzureDatasource[IO](new AzureBlobstore(c, cfg.maxQueueSize)))
-  }
+  override def datasource: IO[Datasource[IO, Stream[IO, ?], ResourcePath, QueryResult[IO]]] =
+    AzureDatasource.mk[IO](cfg)
 }

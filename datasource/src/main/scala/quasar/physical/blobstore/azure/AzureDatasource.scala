@@ -17,11 +17,13 @@
 package quasar.physical.blobstore.azure
 
 import quasar.api.datasource.DatasourceType
-import quasar.blobstore.azure.AzureBlobstore
+import quasar.blobstore.azure.{Azure, AzureBlobstore, AzureConfig}
 import quasar.connector.MonadResourceErr
 import quasar.physical.blobstore.BlobstoreDatasource
 
 import cats.Applicative
+import cats.effect.ConcurrentEffect
+import cats.syntax.functor._
 import eu.timepit.refined.auto._
 import fs2.RaiseThrowable
 
@@ -30,4 +32,8 @@ class AzureDatasource[F[_]: Applicative: MonadResourceErr: RaiseThrowable](azure
 
 object AzureDatasource {
   val dsType = DatasourceType("azure", 1L)
+
+  def mk[F[_]: ConcurrentEffect: MonadResourceErr](cfg: AzureConfig): F[AzureDatasource[F]] =
+    Azure.mkContainerUrl[F](cfg)
+      .map(c => new AzureDatasource[F](new AzureBlobstore(c, cfg.maxQueueSize)))
 }
