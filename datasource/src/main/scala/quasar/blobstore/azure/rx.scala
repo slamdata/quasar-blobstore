@@ -26,22 +26,24 @@ import fs2.{RaiseThrowable, Stream}
 import fs2.concurrent.Queue
 import io.reactivex.{Flowable, Single, SingleObserver}
 import io.reactivex.observers.DisposableSingleObserver
-import io.reactivex.subscribers.ResourceSubscriber
+import io.reactivex.subscribers.DefaultSubscriber
 
 object rx {
-  final class AsyncSubscriber[A](cb: Either[Throwable, Option[A]] => Unit) extends ResourceSubscriber[A] {
+  final class AsyncSubscriber[A](cb: Either[Throwable, Option[A]] => Unit) extends DefaultSubscriber[A] {
 
-    def onNext(a: A): Unit = cb(Right(a.some))
+    override def onStart(): Unit =
+      request(1)
 
-    def onError(t: Throwable): Unit = {
+    def onNext(a: A): Unit = {
+      cb(Right(a.some))
+      request(1)
+    }
+
+    def onError(t: Throwable): Unit =
       cb(Left(t))
-      dispose
-    }
 
-    def onComplete: Unit = {
+    def onComplete: Unit =
       cb(Right(none))
-      dispose
-    }
   }
 
   final class AsyncObserver[A] extends DisposableSingleObserver[A] {
