@@ -22,5 +22,5 @@ import quasar.blobstore.azure.{AzureConfig, ContainerName}
 class PublicAzureDatasourceSpec extends AzureDatasourceSpec {
 
   override val cfg =
-    AzureConfig(ContainerName("test"), None, storageUrl)
+    AzureConfig(ContainerName("test"), None, StorageUrlSlamdata, DefaultMaxQueueSize)
 }

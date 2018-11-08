@@ -23,8 +23,9 @@ import quasar.physical.blobstore.BlobstoreDatasource
 
 import cats.Applicative
 import eu.timepit.refined.auto._
+import fs2.RaiseThrowable
 
-class AzureDatasource[F[_]: Applicative: MonadResourceErr](azureBlobstore: AzureBlobstore[F])
+class AzureDatasource[F[_]: Applicative: MonadResourceErr: RaiseThrowable](azureBlobstore: AzureBlobstore[F])
   extends BlobstoreDatasource[F](AzureDatasource.dsType, azureBlobstore)
 
 object AzureDatasource {

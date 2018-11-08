@@ -19,15 +19,19 @@ package quasar.physical.blobstore
 import slamdata.Predef._
 import quasar.EffectfulQSpec
 import quasar.api.resource.{ResourceName, ResourcePath, ResourcePathType}
-import quasar.connector.{Datasource, QueryResult}
+import quasar.connector.{Datasource, QueryResult, ResourceError}
 
+import java.nio.charset.StandardCharsets
 import scala.concurrent.ExecutionContext.Implicits.global
 
 import cats.data.OptionT
 import cats.effect.Effect
+import cats.syntax.applicative._
+import cats.syntax.either._
 import cats.syntax.flatMap._
 import cats.syntax.functor._
 import fs2.Stream
+import org.specs2.matcher.MatchResult
 
 abstract class BlobstoreDatasourceSpec[F[_]: Effect] extends EffectfulQSpec[F] {
 
@@ -72,6 +76,44 @@ abstract class BlobstoreDatasourceSpec[F[_]: Effect] extends EffectfulQSpec[F] {
     }
   }
 
+  "evaluate" >> {
+    "read line-delimited JSON" >>* {
+      assertResultBytes(
+        datasource,
+        ResourcePath.root() / ResourceName("testdata") / ResourceName("lines.json"),
+        "[1, 2]\n[3, 4]\n".getBytes(StandardCharsets.UTF_8))
+    }
+
+    "read array JSON" >>* {
+      assertResultBytes(
+        datasource,
+        ResourcePath.root() / ResourceName("testdata") / ResourceName("array.json"),
+        "[[1, 2], [3, 4]]\n".getBytes(StandardCharsets.UTF_8))
+    }
+
+    "reading a non-existent file raises ResourceError.PathNotFound" >>* {
+      assertPathNotFound(
+        datasource,
+        ResourcePath.root() / ResourceName("does-not-exist")
+      )
+    }
+  }
+
+
+  def assertPathNotFound(
+      datasource: F[Datasource[F, Stream[F, ?], ResourcePath, QueryResult[F]]],
+      path: ResourcePath): F[MatchResult[Any]] =
+    datasource flatMap { ds =>
+      ds.evaluate(path) flatMap {
+        case QueryResult.Typed(_, data) =>
+          data.attempt.compile.toList.map(_.map(_.leftMap(ResourceError.throwableP.getOption)) must_===
+            List(Some(ResourceError.pathNotFound(path)).asLeft))
+
+        case r =>
+          ko(s"Unexpected QueryResult: $r").pure[F]
+      }
+    }
+
   def assertPrefixedChildPaths(path: ResourcePath, expected: List[(ResourceName, ResourcePathType)]) =
     for {
       ds <- datasource
@@ -85,4 +127,18 @@ abstract class BlobstoreDatasourceSpec[F[_]: Effect] extends EffectfulQSpec[F] {
       ds <- datasource
       res <- ds.prefixedChildPaths(path).map { _ must_== None }
     } yield res
+
+  def assertResultBytes(
+      datasource: F[Datasource[F, Stream[F, ?], ResourcePath, QueryResult[F]]],
+      path: ResourcePath,
+      expected: Array[Byte]): F[MatchResult[Any]] =
+    datasource flatMap { ds =>
+      ds.evaluate(path) flatMap {
+        case QueryResult.Typed(_, data) =>
+          data.compile.to[Array].map(_ must_=== expected)
+
+        case _ =>
+          ko("Unexpected QueryResult").pure[F]
+      }
+    }
 }
