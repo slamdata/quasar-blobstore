@@ -20,7 +20,6 @@ import slamdata.Predef._
 import quasar.api.resource.{ResourceName, ResourcePath, ResourcePathType}
 import quasar.blobstore.Blobstore
 import quasar.connector.{MonadResourceErr, ResourceError}
-import quasar.contrib.std.errorNotImplemented
 
 import java.lang.Integer
 import scala.collection.JavaConverters._
@@ -41,7 +40,7 @@ class AzureBlobstore[F[_]: ConcurrentEffect: MonadResourceErr: RaiseThrowable](
 
   def get(path: ResourcePath): Stream[F, Byte] = {
     val bytes: F[Stream[F, Byte]] = for {
-      single <- download(pathToAzurePath(path))
+      single <- download(pathToBlobUrl(path), BlobRange.DEFAULT)
       r <- rx.singleToAsync(single)
       b <- toByteStream(r)
     } yield b
@@ -54,7 +53,16 @@ class AzureBlobstore[F[_]: ConcurrentEffect: MonadResourceErr: RaiseThrowable](
       }
   }
 
-  def isResource(path: ResourcePath): F[Boolean] = errorNotImplemented
+  def isResource(path: ResourcePath): F[Boolean] = {
+    val res: F[Boolean] = for {
+      single <- getProperties(pathToBlobUrl(path))
+      _ <- rx.singleToAsync(single)
+    } yield true
+
+    res.recover {
+      case _: StorageException => false
+    }
+  }
 
   def list(path: ResourcePath): F[Option[Stream[F, (ResourceName, ResourcePathType)]]] = {
     val resp: F[ContainerListBlobHierarchySegmentResponse] = for {
@@ -78,10 +86,11 @@ class AzureBlobstore[F[_]: ConcurrentEffect: MonadResourceErr: RaiseThrowable](
   private def blobPrefixToNameType(p: BlobPrefix, path: ResourcePath): (ResourceName, ResourcePathType) =
     (ResourceName(simpleName(p.name)), ResourcePathType.Prefix)
 
-  private def download(path: String): F[Single[DownloadResponse]] = {
-    val blobUrl = containerURL.createBlobURL(path)
-    F.delay(blobUrl.download(BlobRange.DEFAULT, BlobAccessConditions.NONE, false, Context.NONE))
-  }
+  private def download(blobUrl: BlobURL, range: BlobRange): F[Single[DownloadResponse]] =
+    F.delay(blobUrl.download(range, BlobAccessConditions.NONE, false, Context.NONE))
+
+  private def getProperties(blobUrl: BlobURL): F[Single[BlobGetPropertiesResponse]] =
+    F.delay(blobUrl.getProperties(BlobAccessConditions.NONE, Context.NONE))
 
   @SuppressWarnings(Array("org.wartremover.warts.Null"))
   private def listBlobs(marker: Option[String], options: ListBlobsOptions): F[Single[ContainerListBlobHierarchySegmentResponse]] =
@@ -96,6 +105,9 @@ class AzureBlobstore[F[_]: ConcurrentEffect: MonadResourceErr: RaiseThrowable](
     val names = ResourcePath.resourceNamesIso.get(path).map(_.value).toList
     names.mkString("/")
   }
+
+  private def pathToBlobUrl(path: ResourcePath): BlobURL =
+    containerURL.createBlobURL(pathToAzurePath(path))
 
   private def pathToOptions(path: ResourcePath): ListBlobsOptions =
     new ListBlobsOptions()
