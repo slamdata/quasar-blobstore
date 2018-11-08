@@ -46,7 +46,7 @@ class AzureBlobstore[F[_]: ConcurrentEffect: MonadResourceErr: RaiseThrowable](
     } yield b
 
 
-    Stream.eval(bytes).flatten
+    Stream.force(bytes)
       .handleErrorWith {
         case ex: StorageException if ex.statusCode() == 404 =>
           Stream.raiseError(ResourceError.throwableP(ResourceError.pathNotFound(path)))
@@ -129,7 +129,7 @@ class AzureBlobstore[F[_]: ConcurrentEffect: MonadResourceErr: RaiseThrowable](
     F.delay {
       for {
         buf <- rx.flowableToStream(r.body(new ReliableDownloadOptions), maxQueueSize.value)
-        b <- Stream.chunk(Chunk.ByteBuffer(buf))
+        b <- Stream.chunk(Chunk.byteBuffer(buf))
       } yield b
     }
 
