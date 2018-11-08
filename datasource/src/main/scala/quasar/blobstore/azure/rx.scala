@@ -69,18 +69,18 @@ object rx {
       maxQueueSize: Int Refined Positive): Stream[F, A] =
     handlerToStream(flowableToHandler(f), maxQueueSize)
 
-  def flowableToHandler[F[_]: Sync, A](flowable: Flowable[A]): (Either[Throwable, Option[F[A]]] => Unit) => Unit = { cb =>
+  def flowableToHandler[F[_]: Sync, A](flowable: Flowable[A]): (Either[Throwable, Option[F[A]]] => Unit) => F[Unit] = { cb =>
     val sub = new AsyncSubscriber[F, A](cb)
-    flowable.subscribe(sub)
+    Sync[F].delay(flowable.subscribe(sub))
   }
 
   def handlerToStream[F[_], A](
-      handler: (Either[Throwable, Option[F[A]]] => Unit) => Unit,
+      handler: (Either[Throwable, Option[F[A]]] => Unit) => F[Unit],
       maxQueueSize: Int Refined Positive)(
       implicit F: ConcurrentEffect[F]): Stream[F, A] =
     (for {
       q <- Stream.eval(Queue.bounded[F, Either[Throwable, Option[F[A]]]](maxQueueSize.value))
-      _ <- Stream.eval(F.delay(handler(enqueueEvent(q))))
+      _ <- Stream.eval(handler(enqueueEvent(q)))
       a <- q.dequeue.rethrow.unNoneTerminate
     } yield Stream.eval(a)).flatten
 
