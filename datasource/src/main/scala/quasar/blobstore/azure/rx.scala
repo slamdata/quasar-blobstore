@@ -34,10 +34,8 @@ object rx {
     override def onStart(): Unit =
       request(1)
 
-    def onNext(a: A): Unit = {
+    def onNext(a: A): Unit =
       cb(Right(Some(Sync[F].delay(request(1)).as(a))))
-      request(1)
-    }
 
     def onError(t: Throwable): Unit =
       cb(Left(t))
