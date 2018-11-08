@@ -49,7 +49,7 @@ class AzureBlobstore[F[_]: ConcurrentEffect: MonadResourceErr: RaiseThrowable](
 
     Stream.eval(bytes).flatten
       .handleErrorWith {
-        case ex: StorageException if ex.statusCode() == 404 =>
+        case ex: StorageException if ex.statusCode() === 404 =>
           Stream.raiseError(ResourceError.throwableP(ResourceError.pathNotFound(path)))
       }
   }
@@ -62,14 +62,11 @@ class AzureBlobstore[F[_]: ConcurrentEffect: MonadResourceErr: RaiseThrowable](
       r <- rx.singleToAsync(single)
     } yield r
 
-    resp.map(r => r.body.segment).map { segm =>
-      if (segm == null) None
-      else {
-        val l = segm.blobItems.asScala.map(blobItemToNameType(_, path)) ++
-          segm.blobPrefixes.asScala.map(blobPrefixToNameType(_, path))
-        Stream.emits(l).covary[F].some
-      }
-    }
+    resp.map(r => Option(r.body.segment)).map { _.map { segm =>
+      val l = segm.blobItems.asScala.map(blobItemToNameType(_, path)) ++
+        segm.blobPrefixes.asScala.map(blobPrefixToNameType(_, path))
+      Stream.emits(l).covary[F]
+    }}
   }
 
   private def blobItemToNameType(i: BlobItem, path: ResourcePath): (ResourceName, ResourcePathType) =

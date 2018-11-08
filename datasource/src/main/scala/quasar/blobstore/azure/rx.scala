@@ -55,10 +55,12 @@ object rx {
 
     override def onStart(): Unit = ()
 
+    @SuppressWarnings(Array("org.wartremover.warts.Equals"))
     override def onSuccess(a: A) =
       if (callback != null) callback(Right(a))
       else ()
 
+    @SuppressWarnings(Array("org.wartremover.warts.Equals"))
     override def onError(t: Throwable) =
       if (callback != null) callback(Left(t))
       else ()

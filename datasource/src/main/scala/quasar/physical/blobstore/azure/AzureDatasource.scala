@@ -31,7 +31,7 @@ class AzureDatasource[F[_]: Applicative: MonadResourceErr: RaiseThrowable](azure
   extends BlobstoreDatasource[F](AzureDatasource.dsType, azureBlobstore)
 
 object AzureDatasource {
-  val dsType = DatasourceType("azure", 1L)
+  val dsType: DatasourceType = DatasourceType("azure", 1L)
 
   def mk[F[_]: ConcurrentEffect: MonadResourceErr](cfg: AzureConfig): F[AzureDatasource[F]] =
     Azure.mkContainerUrl[F](cfg)

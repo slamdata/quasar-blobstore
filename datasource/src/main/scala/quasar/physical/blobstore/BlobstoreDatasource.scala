@@ -36,7 +36,7 @@ class BlobstoreDatasource[F[_]: Applicative: MonadResourceErr: RaiseThrowable](
   blobstore: Blobstore[F])
   extends LightweightDatasource[F, Stream[F, ?], QueryResult[F]] {
 
-  val jvar = JsonVariant.LineDelimited
+  private val jvar = JsonVariant.LineDelimited
 
   override def evaluate(path: ResourcePath): F[QueryResult[F]] = {
     val bytes = blobstore.get(path)

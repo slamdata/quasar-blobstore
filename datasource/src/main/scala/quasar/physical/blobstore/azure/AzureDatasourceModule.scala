@@ -38,13 +38,14 @@ import scalaz.syntax.either._
 
 object AzureDatasourceModule extends LightweightDatasourceModule {
 
-  val redactedCreds =
+  private val redactedCreds =
     AzureCredentials(
       AccountName("<REDACTED>"),
       AccountKey("<REDACTED>"))
 
   override def kind: DatasourceType = AzureDatasource.dsType
 
+  @SuppressWarnings(Array("org.wartremover.warts.ImplicitParameter"))
   override def lightweightDatasource[F[_]: ConcurrentEffect: ContextShift: MonadResourceErr: Timer](
       json: Json)(
       implicit ec: ExecutionContext)
