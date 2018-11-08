@@ -29,13 +29,13 @@ import io.reactivex.observers.DisposableSingleObserver
 import io.reactivex.subscribers.DefaultSubscriber
 
 object rx {
-  final class AsyncSubscriber[A](cb: Either[Throwable, Option[A]] => Unit) extends DefaultSubscriber[A] {
+  final class AsyncSubscriber[F[_]: Sync, A](cb: Either[Throwable, Option[F[A]]] => Unit) extends DefaultSubscriber[A] {
 
     override def onStart(): Unit =
       request(1)
 
     def onNext(a: A): Unit = {
-      cb(Right(a.some))
+      cb(Right(Some(Sync[F].delay(request(1)).as(a))))
       request(1)
     }
 
@@ -71,20 +71,20 @@ object rx {
       maxQueueSize: Int Refined Positive): Stream[F, A] =
     handlerToStream(flowableToHandler(f), maxQueueSize)
 
-  def flowableToHandler[A](flowable: Flowable[A]): (Either[Throwable, Option[A]] => Unit) => Unit = { cb =>
-    val sub = new AsyncSubscriber[A](cb)
+  def flowableToHandler[F[_]: Sync, A](flowable: Flowable[A]): (Either[Throwable, Option[F[A]]] => Unit) => Unit = { cb =>
+    val sub = new AsyncSubscriber[F, A](cb)
     flowable.subscribe(sub)
   }
 
   def handlerToStream[F[_]: RaiseThrowable, A](
-      handler: (Either[Throwable, Option[A]] => Unit) => Unit,
+      handler: (Either[Throwable, Option[F[A]]] => Unit) => Unit,
       maxQueueSize: Int Refined Positive)(
       implicit F: ConcurrentEffect[F]): Stream[F, A] =
-    for {
-      q <- Stream.eval(Queue.bounded[F, Either[Throwable, Option[A]]](maxQueueSize.value))
+    (for {
+      q <- Stream.eval(Queue.bounded[F, Either[Throwable, Option[F[A]]]](maxQueueSize.value))
       _ <- Stream.eval(F.delay(handler(enqueueEvent(q))))
       a <- q.dequeue.rethrow.unNoneTerminate
-    } yield a
+    } yield Stream.eval(a)).flatten
 
   def enqueueEvent[F[_]: Effect, A](q: Queue[F, A])(event: A): Unit =
     Effect[F].runAsync(q.enqueue1(event))(_ => IO.unit).unsafeRunSync
