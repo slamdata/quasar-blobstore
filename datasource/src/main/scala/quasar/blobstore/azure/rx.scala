@@ -74,7 +74,7 @@ object rx {
     flowable.subscribe(sub)
   }
 
-  def handlerToStream[F[_]: RaiseThrowable, A](
+  def handlerToStream[F[_], A](
       handler: (Either[Throwable, Option[F[A]]] => Unit) => Unit,
       maxQueueSize: Int Refined Positive)(
       implicit F: ConcurrentEffect[F]): Stream[F, A] =
