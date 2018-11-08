@@ -47,7 +47,7 @@ class AzureBlobstore[F[_]: ConcurrentEffect: MonadResourceErr: RaiseThrowable](
     } yield b
 
 
-    Stream.eval(bytes).flatten
+    Stream.force(bytes)
       .handleErrorWith {
         case ex: StorageException if ex.statusCode() == 404 =>
           Stream.raiseError(ResourceError.throwableP(ResourceError.pathNotFound(path)))
