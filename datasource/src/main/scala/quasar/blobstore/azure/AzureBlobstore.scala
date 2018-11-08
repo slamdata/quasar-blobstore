@@ -22,7 +22,6 @@ import quasar.blobstore.Blobstore
 import quasar.connector.{MonadResourceErr, ResourceError}
 
 import java.lang.Integer
-import java.nio.ByteBuffer
 import scala.collection.JavaConverters._
 
 import cats.effect._
@@ -30,22 +29,24 @@ import cats.implicits._
 import com.microsoft.azure.storage.blob._
 import com.microsoft.azure.storage.blob.models._
 import com.microsoft.rest.v2.Context
-import fs2.{RaiseThrowable, Stream}
+import fs2.{Chunk, RaiseThrowable, Stream}
 import io.reactivex._
 
 class AzureBlobstore[F[_]: ConcurrentEffect: MonadResourceErr: RaiseThrowable](
-  containerURL: ContainerURL) extends Blobstore[F] {
+  containerURL: ContainerURL,
+  maxQueueSize: MaxQueueSize) extends Blobstore[F] {
 
   private val F = ConcurrentEffect[F]
 
-  def get(path: ResourcePath): Stream[F, ByteBuffer] = {
-    val bufs: F[Stream[F, ByteBuffer]] = for {
+  def get(path: ResourcePath): Stream[F, Byte] = {
+    val bytes: F[Stream[F, Byte]] = for {
       single <- download(pathToAzurePath(path), BlobRange.DEFAULT)
       r <- rx.singleToAsync(single)
-      s <- F.delay(rx.flowableToStream(r.body(new ReliableDownloadOptions)))
-    } yield s
+      b <- toByteStream(r)
+    } yield b
 
-    Stream.eval(bufs).flatten
+
+    Stream.eval(bytes).flatten
       .handleErrorWith {
         case ex: StorageException if ex.statusCode() == 404 =>
           Stream.raiseError(ResourceError.throwableP(ResourceError.pathNotFound(path)))
@@ -119,4 +120,13 @@ class AzureBlobstore[F[_]: ConcurrentEffect: MonadResourceErr: RaiseThrowable](
     val ns = normalize(s)
     ns.substring(ns.lastIndexOf('/') + 1)
   }
+
+  private def toByteStream(r: DownloadResponse): F[Stream[F, Byte]] =
+    F.delay {
+      for {
+        buf <- rx.flowableToStream(r.body(new ReliableDownloadOptions), maxQueueSize.value)
+        b <- Stream.chunk(Chunk.ByteBuffer(buf))
+      } yield b
+    }
+
 }
