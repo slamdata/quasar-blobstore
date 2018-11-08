@@ -117,7 +117,7 @@ class AzureBlobstore[F[_]: ConcurrentEffect: MonadResourceErr: RaiseThrowable](
     F.delay {
       for {
         buf <- rx.flowableToStream(r.body(new ReliableDownloadOptions), maxQueueSize.value)
-        b <- Stream.chunk(Chunk.ByteBuffer(buf))
+        b <- Stream.chunk(Chunk.byteBuffer(buf))
       } yield b
     }
 
