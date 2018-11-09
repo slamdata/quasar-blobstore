@@ -99,6 +99,45 @@ abstract class BlobstoreDatasourceSpec[F[_]: Effect] extends EffectfulQSpec[F] {
     }
   }
 
+  "pathIsResource" >> {
+    "the root of a bucket with a trailing slash is not a resource" >>* {
+      assertPathIsResource(
+        datasource,
+        ResourcePath.root() / ResourceName(""),
+        false)
+    }
+
+    "the root of a bucket is not a resource" >>* {
+      assertPathIsResource(
+        datasource,
+        ResourcePath.root(),
+        false)
+    }
+
+    "a prefix without contents is not a resource" >>* {
+      assertPathIsResource(
+        datasource,
+        ResourcePath.root() / ResourceName("testdata"),
+        false)
+    }
+
+    "an actual file is a resource" >>* {
+      assertPathIsResource(
+        datasource,
+        ResourcePath.root() / ResourceName("testdata") / ResourceName("array.json"),
+        true)
+    }
+  }
+
+  def assertPathIsResource(
+      datasource: F[Datasource[F, Stream[F, ?], ResourcePath, QueryResult[F]]],
+      path: ResourcePath,
+      expected: Boolean): F[MatchResult[Any]] =
+    for {
+      ds <- datasource
+      r <- ds.pathIsResource(path).map(_ must_=== expected)
+    } yield r
+
 
   def assertPathNotFound(
       datasource: F[Datasource[F, Stream[F, ?], ResourcePath, QueryResult[F]]],
