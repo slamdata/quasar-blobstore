@@ -19,6 +19,7 @@ package quasar.blobstore.azure
 import slamdata.Predef._
 
 import eu.timepit.refined.api.Refined
+import eu.timepit.refined.auto._
 import eu.timepit.refined.numeric.Positive
 
 final case class ContainerName(value: String)
@@ -31,8 +32,12 @@ final case class AzureCredentials(accountName: AccountName, accountKey: AccountK
 
 final case class MaxQueueSize(value: Int Refined Positive)
 
+object MaxQueueSize {
+  def default: MaxQueueSize = MaxQueueSize(10)
+}
+
 final case class AzureConfig(
     containerName: ContainerName,
     credentials: Option[AzureCredentials],
     storageUrl: StorageUrl,
-    maxQueueSize: MaxQueueSize)
+    maxQueueSize: Option[MaxQueueSize])

@@ -24,19 +24,17 @@ import quasar.physical.blobstore.{BlobstoreDatasource, BlobstoreDatasourceSpec}
 import BlobstoreDatasource._
 
 import cats.effect.IO
-import eu.timepit.refined.auto._
 import fs2.Stream
 
 abstract class AzureDatasourceSpec extends BlobstoreDatasourceSpec[IO] {
 
   val AccountNameSlamdata = AccountName("slamdata")
   val StorageUrlSlamdata = Azure.mkStdStorageUrl(AccountNameSlamdata)
-  val DefaultMaxQueueSize = MaxQueueSize(1000)
 
   val cfg: AzureConfig
 
   override def datasource: IO[Datasource[IO, Stream[IO, ?], ResourcePath, QueryResult[IO]]] = {
     Azure.mkContainerUrl[IO](cfg)
-      .map(c => new AzureDatasource[IO](new AzureBlobstore(c, cfg.maxQueueSize)))
+      .map(c => new AzureDatasource[IO](new AzureBlobstore(c, cfg.maxQueueSize.getOrElse(MaxQueueSize.default))))
   }
 }

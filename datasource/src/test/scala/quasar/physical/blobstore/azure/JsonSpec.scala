@@ -43,7 +43,7 @@ class JsonSpec extends Specification {
           ContainerName("mycontainer"),
           Some(AzureCredentials(AccountName("myname"), AccountKey("mykey"))),
           Azure.mkStdStorageUrl(AccountName("myaccount")),
-          MaxQueueSize(10)))
+          Some(MaxQueueSize(10))))
     }
 
     "succeeds reading config without credentials" >> {
@@ -61,7 +61,7 @@ class JsonSpec extends Specification {
           ContainerName("mycontainer"),
           None,
           Azure.mkStdStorageUrl(AccountName("myaccount")),
-          MaxQueueSize(10)))
+          Some(MaxQueueSize(10))))
     }
 
     "fails reading config with incomplete credentials" >> {
