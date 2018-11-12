@@ -155,10 +155,11 @@ val fs2Version = "1.0.0"
 val nettyVersion = "4.1.28.Final"
 val quasarVersion = IO.read(file("./quasar-version")).trim
 val qdataVersion = IO.read(file("./qdata-version")).trim
+val refinedVersion = "0.8.5"
 val rxjavaVersion = "2.2.2"
 val shimsVersion = "1.2.1"
 val slf4jVersion = "1.7.25"
-val specsVersion = "4.1.2"
+val specsVersion = "4.3.3"
 
 // direct as well as transitive deps need to be in sync with quasar's deps
 lazy val datasourceCoreDeps = Seq(
@@ -166,6 +167,7 @@ lazy val datasourceCoreDeps = Seq(
   "com.github.alexarchambault" %% "argonaut-refined_6.2" % argonautRefinedVersion,
   "com.microsoft.azure"        %  "azure-storage-blob"   % azureVersion,
   "com.slamdata"               %% "qdata-json"           % qdataVersion,
+  "eu.timepit"                 %% "refined-scalacheck"   % refinedVersion,
   // netty-all isn't strictly necessary but takes advantage of native libs.
   // Azure doesn't pull in libs like netty-transport-native-kqueue,
   // netty-transport-native-unix-common and netty-transport-native-epoll.
