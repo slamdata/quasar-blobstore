@@ -17,13 +17,14 @@
 package quasar.physical.blobstore.azure
 
 import slamdata.Predef._
-import quasar.blobstore.azure._, json._
+import quasar.blobstore.azure._, configArbitrary._, json._
 
 import argonaut._, Argonaut._
 import eu.timepit.refined.auto._
+import org.specs2.ScalaCheck
 import org.specs2.mutable.Specification
 
-class JsonSpec extends Specification {
+class JsonSpec extends Specification with ScalaCheck {
 
   "json decoder" >> {
 
@@ -43,7 +44,7 @@ class JsonSpec extends Specification {
           ContainerName("mycontainer"),
           Some(AzureCredentials(AccountName("myname"), AccountKey("mykey"))),
           Azure.mkStdStorageUrl(AccountName("myaccount")),
-          MaxQueueSize(10)))
+          Some(MaxQueueSize(10))))
     }
 
     "succeeds reading config without credentials" >> {
@@ -61,7 +62,7 @@ class JsonSpec extends Specification {
           ContainerName("mycontainer"),
           None,
           Azure.mkStdStorageUrl(AccountName("myaccount")),
-          MaxQueueSize(10)))
+          Some(MaxQueueSize(10))))
     }
 
     "fails reading config with incomplete credentials" >> {
@@ -89,6 +90,12 @@ class JsonSpec extends Specification {
         """.stripMargin
 
       s.decodeOption[AzureConfig] must_=== None
+    }
+  }
+
+  "json codec" >> {
+    "lawful" >> prop { cfg: AzureConfig =>
+      CodecJson.codecLaw(CodecJson.derived[AzureConfig])(cfg)
     }
   }
 }

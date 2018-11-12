@@ -17,7 +17,7 @@
 package quasar.physical.blobstore.azure
 
 import quasar.api.datasource.DatasourceType
-import quasar.blobstore.azure.{Azure, AzureBlobstore, AzureConfig}
+import quasar.blobstore.azure.{Azure, AzureBlobstore, AzureConfig, MaxQueueSize}
 import quasar.connector.MonadResourceErr
 import quasar.physical.blobstore.BlobstoreDatasource
 
@@ -35,5 +35,5 @@ object AzureDatasource {
 
   def mk[F[_]: ConcurrentEffect: MonadResourceErr](cfg: AzureConfig): F[AzureDatasource[F]] =
     Azure.mkContainerUrl[F](cfg)
-      .map(c => new AzureDatasource[F](new AzureBlobstore(c, cfg.maxQueueSize)))
+      .map(c => new AzureDatasource[F](new AzureBlobstore(c, cfg.maxQueueSize.getOrElse(MaxQueueSize.default))))
 }

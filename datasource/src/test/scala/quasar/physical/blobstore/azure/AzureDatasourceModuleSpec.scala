@@ -31,15 +31,12 @@ class AzureDatasourceModuleSpec extends Specification {
       "accountName" -> Json.jString(cred.accountName.value),
       "accountKey" -> Json.jString(cred.accountKey.value))
 
-  private def credToJsonList(cred: Option[AzureCredentials]): List[(String, Json)] =
-    List("credentials" -> cred.fold(jNull)(credToJson))
-
-  private def cfgToJson(cfg: AzureConfig): Json = Json.obj(
-    (List("container" -> Json.jString(cfg.containerName.value)) ++
-      credToJsonList(cfg.credentials) ++
-      List(
+  private def cfgToJson(cfg: AzureConfig): Json =
+    Json.obj(
+      "container" -> Json.jString(cfg.containerName.value),
+      "credentials" -> cfg.credentials.fold(jNull)(credToJson),
       "storageUrl" -> Json.jString(cfg.storageUrl.value),
-      "maxQueueSize" -> Json.jNumber(cfg.maxQueueSize.value.value))): _*)
+      "maxQueueSize" -> cfg.maxQueueSize.fold(jNull)(qs => Json.jNumber(qs.value.value)))
 
   "sanitize config" >> {
 
@@ -48,14 +45,14 @@ class AzureDatasourceModuleSpec extends Specification {
         ContainerName("mycontainer"),
         Some(AzureCredentials(AccountName("myname"), AccountKey("mykey"))),
         Azure.mkStdStorageUrl(AccountName("myaccount")),
-        MaxQueueSize(10))
+        Some(MaxQueueSize(10)))
 
       AzureDatasourceModule.sanitizeConfig(cfgToJson(cfg)) must_===
         cfgToJson(AzureConfig(
           ContainerName("mycontainer"),
           Some(AzureCredentials(AccountName("<REDACTED>"), AccountKey("<REDACTED>"))),
           Azure.mkStdStorageUrl(AccountName("myaccount")),
-          MaxQueueSize(10)))
+          Some(MaxQueueSize(10))))
     }
 
     "does not change config without credentials" >> {
@@ -63,7 +60,7 @@ class AzureDatasourceModuleSpec extends Specification {
         ContainerName("mycontainer"),
         None,
         Azure.mkStdStorageUrl(AccountName("myaccount")),
-        MaxQueueSize(10)))
+        Some(MaxQueueSize(10))))
 
       AzureDatasourceModule.sanitizeConfig(cfg) must_=== cfg
     }
