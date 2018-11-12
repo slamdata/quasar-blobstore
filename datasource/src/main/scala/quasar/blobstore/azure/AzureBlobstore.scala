@@ -18,11 +18,12 @@ package quasar.blobstore.azure
 
 import slamdata.Predef._
 import quasar.api.resource.{ResourceName, ResourcePath, ResourcePathType}
-import quasar.blobstore.Blobstore
+import quasar.blobstore.{Blobstore, BlobstoreStatus}
 import quasar.connector.{MonadResourceErr, ResourceError}
 
 import java.lang.Integer
 import scala.collection.JavaConverters._
+import scala.util.control.NonFatal
 
 import cats.effect._
 import cats.implicits._
@@ -61,6 +62,20 @@ class AzureBlobstore[F[_]: ConcurrentEffect: MonadResourceErr: RaiseThrowable](
 
     res.recover {
       case _: StorageException => false
+    }
+  }
+
+  def status: F[BlobstoreStatus] = {
+    val res = for {
+      single <- F.delay(containerURL.getProperties(new LeaseAccessConditions(), Context.NONE))
+      a <- rx.singleToAsync(single)
+    } yield BlobstoreStatus.ok()
+
+    res.recover {
+      case ex: StorageException if ex.statusCode === 403 => BlobstoreStatus.noAccess()
+      case ex: StorageException if ex.statusCode === 404 => BlobstoreStatus.notFound()
+      case ex: StorageException => BlobstoreStatus.notOk(ex.message())
+      case NonFatal(t) => BlobstoreStatus.notOk(t.getMessage)
     }
   }
 

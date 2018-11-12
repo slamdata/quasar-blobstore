@@ -28,4 +28,6 @@ trait Blobstore[F[_]] {
   def get(path: ResourcePath): Stream[F, Byte]
 
   def isResource(path: ResourcePath): F[Boolean]
+
+  def status: F[BlobstoreStatus]
 }
