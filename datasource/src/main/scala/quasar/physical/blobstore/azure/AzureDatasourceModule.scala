@@ -23,14 +23,18 @@ import quasar.api.datasource.{DatasourceError, DatasourceType}
 import quasar.api.resource.ResourcePath
 import quasar.blobstore.azure._
 import json._
+import quasar.blobstore.BlobstoreStatus
 import quasar.connector.{Datasource, LightweightDatasourceModule, MonadResourceErr, QueryResult}
 
+import java.net.{MalformedURLException, UnknownHostException}
 import scala.concurrent.ExecutionContext
+import scala.util.control.NonFatal
 
 import argonaut.Json
-import cats.Applicative
+import cats.{Applicative, ApplicativeError}
 import cats.effect.{ConcurrentEffect, ContextShift, Timer}
 import cats.syntax.applicative._
+import cats.syntax.flatMap._
 import cats.syntax.functor._
 import fs2.Stream
 import scalaz.{NonEmptyList, \/}
@@ -52,7 +56,41 @@ object AzureDatasourceModule extends LightweightDatasourceModule {
       : F[InitializationError[Json] \/ Disposable[F, Datasource[F, Stream[F, ?], ResourcePath, QueryResult[F]]]] =
     json.as[AzureConfig].result match {
       case Right(cfg) =>
-        AzureDatasource.mk(cfg).map(d => Disposable(d.asDsType, Applicative[F].unit).right)
+        val r = for {
+          ds <- AzureDatasource.mk(cfg)
+          l <- ds.status
+          res = l match {
+            case BlobstoreStatus.Ok => Disposable(ds.asDsType, Applicative[F].unit).right
+            case BlobstoreStatus.NoAccess =>
+              DatasourceError
+                .accessDenied[Json, InitializationError[Json]](kind, json, "Access to blobstore denied")
+                .left
+            case BlobstoreStatus.NotFound =>
+              DatasourceError
+                .invalidConfiguration[Json, InitializationError[Json]](kind, json, NonEmptyList("Blobstore not found"))
+                .left
+            case BlobstoreStatus.NotOk(msg) =>
+              DatasourceError
+                .invalidConfiguration[Json, InitializationError[Json]](kind, json, NonEmptyList(msg))
+                .left
+          }
+        } yield res
+
+        ApplicativeError[F, Throwable].handleError(r) {
+          case _: MalformedURLException =>
+            DatasourceError
+              .invalidConfiguration[Json, InitializationError[Json]](kind, json, NonEmptyList("Invalid storage url"))
+              .left
+          case _: UnknownHostException =>
+            DatasourceError
+              .invalidConfiguration[Json, InitializationError[Json]](kind, json, NonEmptyList("Non-existing storage url"))
+              .left
+          case NonFatal(t) =>
+            DatasourceError
+              .invalidConfiguration[Json, InitializationError[Json]](kind, json, NonEmptyList(t.getMessage))
+              .left
+        }
+
       case Left((msg, _)) =>
         DatasourceError
           .invalidConfiguration[Json, InitializationError[Json]](kind, json, NonEmptyList(msg))

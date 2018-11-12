@@ -17,19 +17,31 @@
 package quasar.physical.blobstore.azure
 
 import slamdata.Predef._
+import quasar.api.datasource.DatasourceError
 import quasar.blobstore.azure._
+import quasar.physical.blobstore.BlobstoreDatasource._
 
-import argonaut._, Argonaut._
+import scala.concurrent.ExecutionContext
+
+import argonaut._
+import Argonaut._
+import cats.effect.{ContextShift, IO, Timer}
 import eu.timepit.refined.auto._
-
 import org.specs2.mutable.Specification
 
 class AzureDatasourceModuleSpec extends Specification {
+
+  implicit val ec: ExecutionContext = ExecutionContext.global
+  implicit val cs: ContextShift[IO] = IO.contextShift(ec)
+  implicit val timer: Timer[IO] = IO.timer(ec)
 
   private def credToJson(cred: AzureCredentials): Json =
     Json.obj(
       "accountName" -> Json.jString(cred.accountName.value),
       "accountKey" -> Json.jString(cred.accountKey.value))
+
+  private def init(j: Json) =
+    AzureDatasourceModule.lightweightDatasource[IO](j).unsafeRunSync.toEither
 
   private def cfgToJson(cfg: AzureConfig): Json =
     Json.obj(
@@ -37,6 +49,36 @@ class AzureDatasourceModuleSpec extends Specification {
       "credentials" -> cfg.credentials.fold(jNull)(credToJson),
       "storageUrl" -> Json.jString(cfg.storageUrl.value),
       "maxQueueSize" -> cfg.maxQueueSize.fold(jNull)(qs => Json.jNumber(qs.value.value)))
+
+  "datasource init" >> {
+    "succeeds when correct cfg without credentials" >> {
+      init(cfgToJson(Fixtures.PublicConfig)) must beRight
+    }
+
+    "fails with access denied when invalid credentials" >> {
+      init(cfgToJson(Fixtures.PublicConfig.copy(credentials = Some(Fixtures.InvalidCredentials)))) must beLike {
+        case Left(DatasourceError.AccessDenied(_, _, _)) => ok
+      }
+    }
+
+    "fails with invalid config when invalid storage url" >> {
+      init(cfgToJson(Fixtures.PublicConfig.copy(storageUrl = StorageUrl("invalid")))) must beLike {
+        case Left(DatasourceError.InvalidConfiguration(_, _, _)) => ok
+      }
+    }
+
+    "fails with invalid config when non-existing storage url" >> {
+      init(cfgToJson(Fixtures.PublicConfig.copy(storageUrl = Azure.mkStdStorageUrl(AccountName("nonexisting"))))) must beLike {
+        case Left(DatasourceError.InvalidConfiguration(_, _, _)) => ok
+      }
+    }
+
+    "fails with invalid config when non-existing container " >> {
+      init(cfgToJson(Fixtures.PublicConfig.copy(containerName = ContainerName("nonexisting")))) must beLike {
+        case Left(DatasourceError.InvalidConfiguration(_, _, _)) => ok
+      }
+    }
+  }
 
   "sanitize config" >> {
 

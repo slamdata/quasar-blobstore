@@ -19,7 +19,7 @@ package quasar.physical.blobstore
 import slamdata.Predef._
 import quasar.api.datasource.DatasourceType
 import quasar.api.resource.{ResourceName, ResourcePath, ResourcePathType}
-import quasar.blobstore.Blobstore
+import quasar.blobstore.{Blobstore, BlobstoreStatus}
 import quasar.connector._
 import ParsableType.JsonVariant
 import quasar.connector.datasource.LightweightDatasource
@@ -50,6 +50,8 @@ class BlobstoreDatasource[F[_]: Applicative: MonadResourceErr: RaiseThrowable](
     blobstore.list(prefixPath)
 
   def asDsType: Datasource[F, Stream[F, ?], ResourcePath, QueryResult[F]] = this
+
+  def status: F[BlobstoreStatus] = blobstore.status
 }
 
 object BlobstoreDatasource {

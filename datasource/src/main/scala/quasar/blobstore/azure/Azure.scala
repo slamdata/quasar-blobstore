@@ -20,7 +20,8 @@ import slamdata.Predef._
 
 import java.net.URL
 
-import cats.effect.{Effect, Sync}
+import cats.effect.Sync
+import cats.syntax.functor._
 import com.microsoft.azure.storage.blob._
 
 object Azure {
@@ -34,12 +35,10 @@ object Azure {
       case Some(c) => new SharedKeyCredentials(c.accountName.value, c.accountKey.value)
     }
 
-  def mkContainerUrl[F[_]: Effect](cfg: AzureConfig)(implicit F: Sync[F]): F[ContainerURL] =
-    F.delay {
-      val url = new URL(cfg.storageUrl.value)
+  def mkContainerUrl[F[_]](cfg: AzureConfig)(implicit F: Sync[F]): F[ContainerURL] =
+    F.catchNonFatal(new URL(cfg.storageUrl.value)) map { url =>
       val serviceUrl = new ServiceURL(url,
         StorageURL.createPipeline(mkCredentials(cfg.credentials), new PipelineOptions))
       serviceUrl.createContainerURL(cfg.containerName.value)
     }
-
 }
