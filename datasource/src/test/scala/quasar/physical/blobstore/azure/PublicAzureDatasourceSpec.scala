@@ -16,11 +16,7 @@
 
 package quasar.physical.blobstore.azure
 
-import slamdata.Predef.None
-import quasar.blobstore.azure.{AzureConfig, ContainerName}
-
 class PublicAzureDatasourceSpec extends AzureDatasourceSpec {
 
-  override val cfg =
-    AzureConfig(ContainerName("test"), None, StorageUrlSlamdata, None)
+  override val cfg = Fixtures.PublicConfig
 }

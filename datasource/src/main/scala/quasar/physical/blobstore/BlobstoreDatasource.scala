@@ -19,8 +19,9 @@ package quasar.physical.blobstore
 import slamdata.Predef._
 import quasar.api.datasource.DatasourceType
 import quasar.api.resource.{ResourceName, ResourcePath, ResourcePathType}
-import quasar.blobstore.Blobstore
-import quasar.connector.{MonadResourceErr, ParsableType, QueryResult, ResourceError}, ParsableType.JsonVariant
+import quasar.blobstore.{Blobstore, BlobstoreStatus}
+import quasar.connector._
+import ParsableType.JsonVariant
 import quasar.connector.datasource.LightweightDatasource
 import quasar.contrib.scalaz.MonadError_
 
@@ -34,7 +35,7 @@ class BlobstoreDatasource[F[_]: Applicative: MonadResourceErr: RaiseThrowable](
   blobstore: Blobstore[F])
   extends LightweightDatasource[F, Stream[F, ?], QueryResult[F]] {
 
-  val jvar = JsonVariant.LineDelimited
+  private val jvar = JsonVariant.LineDelimited
 
   override def evaluate(path: ResourcePath): F[QueryResult[F]] = {
     val bytes = blobstore.get(path)
@@ -48,6 +49,9 @@ class BlobstoreDatasource[F[_]: Applicative: MonadResourceErr: RaiseThrowable](
       : F[Option[Stream[F, (ResourceName, ResourcePathType)]]] =
     blobstore.list(prefixPath)
 
+  def asDsType: Datasource[F, Stream[F, ?], ResourcePath, QueryResult[F]] = this
+
+  def status: F[BlobstoreStatus] = blobstore.status
 }
 
 object BlobstoreDatasource {

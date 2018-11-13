@@ -18,11 +18,12 @@ package quasar.blobstore.azure
 
 import slamdata.Predef._
 import quasar.api.resource.{ResourceName, ResourcePath, ResourcePathType}
-import quasar.blobstore.Blobstore
+import quasar.blobstore.{Blobstore, BlobstoreStatus}
 import quasar.connector.{MonadResourceErr, ResourceError}
 
 import java.lang.Integer
 import scala.collection.JavaConverters._
+import scala.util.control.NonFatal
 
 import cats.effect._
 import cats.implicits._
@@ -48,7 +49,7 @@ class AzureBlobstore[F[_]: ConcurrentEffect: MonadResourceErr: RaiseThrowable](
 
     Stream.force(bytes)
       .handleErrorWith {
-        case ex: StorageException if ex.statusCode() == 404 =>
+        case ex: StorageException if ex.statusCode() === 404 =>
           Stream.raiseError(ResourceError.throwableP(ResourceError.pathNotFound(path)))
       }
   }
@@ -64,20 +65,31 @@ class AzureBlobstore[F[_]: ConcurrentEffect: MonadResourceErr: RaiseThrowable](
     }
   }
 
+  def status: F[BlobstoreStatus] = {
+    val res = for {
+      single <- F.delay(containerURL.getProperties(new LeaseAccessConditions(), Context.NONE))
+      a <- rx.singleToAsync(single)
+    } yield BlobstoreStatus.ok()
+
+    res.recover {
+      case ex: StorageException if ex.statusCode === 403 => BlobstoreStatus.noAccess()
+      case ex: StorageException if ex.statusCode === 404 => BlobstoreStatus.notFound()
+      case ex: StorageException => BlobstoreStatus.notOk(ex.message())
+      case NonFatal(t) => BlobstoreStatus.notOk(t.getMessage)
+    }
+  }
+
   def list(path: ResourcePath): F[Option[Stream[F, (ResourceName, ResourcePathType)]]] = {
     val resp: F[ContainerListBlobHierarchySegmentResponse] = for {
       single <- listBlobs(None, pathToOptions(path))
       r <- rx.singleToAsync(single)
     } yield r
 
-    resp.map(r => r.body.segment).map { segm =>
-      if (segm == null) None
-      else {
-        val l = segm.blobItems.asScala.map(blobItemToNameType(_, path)) ++
-          segm.blobPrefixes.asScala.map(blobPrefixToNameType(_, path))
-        Stream.emits(l).covary[F].some
-      }
-    }
+    resp.map(r => Option(r.body.segment)).map { _.map { segm =>
+      val l = segm.blobItems.asScala.map(blobItemToNameType(_, path)) ++
+        segm.blobPrefixes.asScala.map(blobPrefixToNameType(_, path))
+      Stream.emits(l).covary[F]
+    }}
   }
 
   private def blobItemToNameType(i: BlobItem, path: ResourcePath): (ResourceName, ResourcePathType) =

@@ -16,20 +16,16 @@
 
 package quasar.physical.blobstore.azure
 
-import slamdata.Predef._
-import quasar.api.resource.ResourcePath
+import slamdata.Predef.None
 import quasar.blobstore.azure._
-import quasar.connector.{Datasource, QueryResult}
-import quasar.physical.blobstore.{BlobstoreDatasource, BlobstoreDatasourceSpec}
-import BlobstoreDatasource._
 
-import cats.effect.IO
-import fs2.Stream
+object Fixtures {
 
-abstract class AzureDatasourceSpec extends BlobstoreDatasourceSpec[IO] {
+  val AccountNameSlamdata = AccountName("slamdata")
+  val StorageUrlSlamdata = Azure.mkStdStorageUrl(AccountNameSlamdata)
+  val InvalidCredentials = AzureCredentials(AccountName("invalid"), AccountKey("invalid"))
 
-  val cfg: AzureConfig
+  val PublicConfig =
+    AzureConfig(ContainerName("test"), None, StorageUrlSlamdata, None)
 
-  override def datasource: IO[Datasource[IO, Stream[IO, ?], ResourcePath, QueryResult[IO]]] =
-    AzureDatasource.mk[IO](cfg)
 }
