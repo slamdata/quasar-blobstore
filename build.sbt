@@ -4,11 +4,11 @@ performMavenCentralSync in ThisBuild := false   // basically just ignores all th
 
 publishAsOSSProject in ThisBuild := true
 
-homepage in ThisBuild := Some(url("https://github.com/slamdata/quasar-blobstore"))
+homepage in ThisBuild := Some(url("https://github.com/slamdata/quasar-datasource-azure"))
 
 scmInfo in ThisBuild := Some(ScmInfo(
-  url("https://github.com/slamdata/quasar-blobstore"),
-  "scm:git@github.com:slamdata/quasar-blobstore.git"))
+  url("https://github.com/slamdata/quasar-datasource-azure"),
+  "scm:git@github.com:slamdata/quasar-datasource-azure.git"))
 
 lazy val root = project
   .in(file("."))
@@ -32,7 +32,7 @@ lazy val core = project
   .in(file("datasource"))
   .settings(addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.2.4"))
   .settings(
-    name := "quasar-blobstore",
+    name := "quasar-datasource-azure",
 
     datasourceName := "azure",
 
