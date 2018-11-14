@@ -18,6 +18,7 @@ package quasar.physical.blobstore.azure
 
 import slamdata.Predef._
 import quasar.api.datasource.DatasourceError
+import quasar.blobstore.ResourceType
 import quasar.blobstore.azure._
 import quasar.physical.blobstore.BlobstoreDatasource._
 
@@ -43,12 +44,19 @@ class AzureDatasourceModuleSpec extends Specification {
   private def init(j: Json) =
     AzureDatasourceModule.lightweightDatasource[IO](j).unsafeRunSync.toEither
 
-  private def cfgToJson(cfg: AzureConfig): Json =
-    Json.obj(
+  private def cfgToJson(cfg: AzureConfig, stripNulls: Boolean = true): Json = {
+    val js = Json.obj(
       "container" -> Json.jString(cfg.containerName.value),
       "credentials" -> cfg.credentials.fold(jNull)(credToJson),
       "storageUrl" -> Json.jString(cfg.storageUrl.value),
-      "maxQueueSize" -> cfg.maxQueueSize.fold(jNull)(qs => Json.jNumber(qs.value.value)))
+      "maxQueueSize" -> cfg.maxQueueSize.fold(jNull)(qs => Json.jNumber(qs.value.value)),
+      "resourceType" -> Json.jString(cfg.resourceType.toString.toLowerCase))
+
+    if (stripNulls)
+      js.withObject(j => JsonObject.fromTraversableOnce(j.toList.filter(!_._2.isNull)))
+    else
+      js
+  }
 
   "datasource init" >> {
     "succeeds when correct cfg without credentials" >> {
@@ -87,14 +95,16 @@ class AzureDatasourceModuleSpec extends Specification {
         ContainerName("mycontainer"),
         Some(AzureCredentials(AccountName("myname"), AccountKey("mykey"))),
         Azure.mkStdStorageUrl(AccountName("myaccount")),
-        Some(MaxQueueSize(10)))
+        Some(MaxQueueSize(10)),
+        ResourceType.Json)
 
       AzureDatasourceModule.sanitizeConfig(cfgToJson(cfg)) must_===
         cfgToJson(AzureConfig(
           ContainerName("mycontainer"),
           Some(AzureCredentials(AccountName("<REDACTED>"), AccountKey("<REDACTED>"))),
           Azure.mkStdStorageUrl(AccountName("myaccount")),
-          Some(MaxQueueSize(10))))
+          Some(MaxQueueSize(10)),
+          ResourceType.Json))
     }
 
     "does not change config without credentials" >> {
@@ -102,7 +112,19 @@ class AzureDatasourceModuleSpec extends Specification {
         ContainerName("mycontainer"),
         None,
         Azure.mkStdStorageUrl(AccountName("myaccount")),
-        Some(MaxQueueSize(10))))
+        Some(MaxQueueSize(10)),
+        ResourceType.LdJson))
+
+      AzureDatasourceModule.sanitizeConfig(cfg) must_=== cfg
+    }
+
+    "does not change config with null credentials" >> {
+      val cfg = cfgToJson(AzureConfig(
+        ContainerName("mycontainer"),
+        None,
+        Azure.mkStdStorageUrl(AccountName("myaccount")),
+        None,
+        ResourceType.LdJson), stripNulls = false)
 
       AzureDatasourceModule.sanitizeConfig(cfg) must_=== cfg
     }

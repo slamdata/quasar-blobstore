@@ -17,6 +17,7 @@
 package quasar.blobstore.azure
 
 import slamdata.Predef._
+import quasar.blobstore.ResourceType
 
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto._
@@ -40,4 +41,5 @@ final case class AzureConfig(
     containerName: ContainerName,
     credentials: Option[AzureCredentials],
     storageUrl: StorageUrl,
-    maxQueueSize: Option[MaxQueueSize])
+    maxQueueSize: Option[MaxQueueSize],
+    resourceType: ResourceType)

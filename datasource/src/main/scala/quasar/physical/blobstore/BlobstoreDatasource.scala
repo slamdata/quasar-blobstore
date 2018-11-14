@@ -32,10 +32,9 @@ import fs2.{RaiseThrowable, Stream}
 
 class BlobstoreDatasource[F[_]: Applicative: MonadResourceErr: RaiseThrowable](
   val kind: DatasourceType,
+  jvar: JsonVariant,
   blobstore: Blobstore[F])
   extends LightweightDatasource[F, Stream[F, ?], QueryResult[F]] {
-
-  private val jvar = JsonVariant.LineDelimited
 
   override def evaluate(path: ResourcePath): F[QueryResult[F]] = {
     val bytes = blobstore.get(path)

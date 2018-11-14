@@ -31,6 +31,7 @@ import scala.concurrent.ExecutionContext
 import scala.util.control.NonFatal
 
 import argonaut.Json
+import argonaut.ArgonautScalaz._
 import cats.{Applicative, ApplicativeError}
 import cats.effect.{ConcurrentEffect, ContextShift, Timer}
 import cats.syntax.applicative._
@@ -39,6 +40,7 @@ import cats.syntax.functor._
 import fs2.Stream
 import scalaz.{NonEmptyList, \/}
 import scalaz.syntax.either._
+import scalaz.syntax.equal._
 
 object AzureDatasourceModule extends LightweightDatasourceModule {
 
@@ -98,8 +100,14 @@ object AzureDatasourceModule extends LightweightDatasourceModule {
 
     }
 
-  override def sanitizeConfig(config: Json): Json =
-    config.as[AzureConfig].result.toOption.map(cfg =>
-      cfg.copy(credentials = cfg.credentials.map(_ => redactedCreds))
-    ).map(json.codecConfig.encode).getOrElse(Json.jEmptyObject)
+  override def sanitizeConfig(config: Json): Json = {
+    val sanitized = for {
+      creds <- config.cursor --\ "credentials"
+
+      redacted =
+        if (creds.focus === Json.jNull) creds
+        else creds.set(json.codecCredentials.encode(redactedCreds))
+    } yield redacted.undo
+    sanitized.getOrElse(config)
+  }
 }

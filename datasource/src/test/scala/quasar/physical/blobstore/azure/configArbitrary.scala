@@ -18,6 +18,7 @@ package quasar.physical.blobstore.azure
 
 import quasar.blobstore.azure._
 import slamdata.Predef._
+import quasar.blobstore.ResourceType
 
 import org.scalacheck._, Arbitrary._
 import eu.timepit.refined.api.Refined
@@ -39,7 +40,8 @@ object configArbitrary {
     cred <- Gen.option(genCredentials)
     s <- arbitrary[String].map(StorageUrl)
     qs <- Gen.option(genMaxQueueSize)
-  } yield AzureConfig(c, cred, s, qs)
+    rt <- Gen.oneOf(ResourceType.Json, ResourceType.LdJson)
+  } yield AzureConfig(c, cred, s, qs, rt)
 
   implicit val arbAzureConfig: Arbitrary[AzureConfig] =
     Arbitrary(genAzureConfig)
