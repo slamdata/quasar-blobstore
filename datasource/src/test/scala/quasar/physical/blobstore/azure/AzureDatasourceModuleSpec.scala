@@ -18,6 +18,7 @@ package quasar.physical.blobstore.azure
 
 import slamdata.Predef._
 import quasar.api.datasource.DatasourceError
+import quasar.blobstore.ResourceType
 import quasar.blobstore.azure._
 import quasar.physical.blobstore.BlobstoreDatasource._
 
@@ -48,7 +49,8 @@ class AzureDatasourceModuleSpec extends Specification {
       "container" -> Json.jString(cfg.containerName.value),
       "credentials" -> cfg.credentials.fold(jNull)(credToJson),
       "storageUrl" -> Json.jString(cfg.storageUrl.value),
-      "maxQueueSize" -> cfg.maxQueueSize.fold(jNull)(qs => Json.jNumber(qs.value.value)))
+      "maxQueueSize" -> cfg.maxQueueSize.fold(jNull)(qs => Json.jNumber(qs.value.value)),
+      "resourceType" -> Json.jString(cfg.resourceType.toString.toLowerCase))
 
   "datasource init" >> {
     "succeeds when correct cfg without credentials" >> {
@@ -87,14 +89,16 @@ class AzureDatasourceModuleSpec extends Specification {
         ContainerName("mycontainer"),
         Some(AzureCredentials(AccountName("myname"), AccountKey("mykey"))),
         Azure.mkStdStorageUrl(AccountName("myaccount")),
-        Some(MaxQueueSize(10)))
+        Some(MaxQueueSize(10)),
+        ResourceType.Json)
 
       AzureDatasourceModule.sanitizeConfig(cfgToJson(cfg)) must_===
         cfgToJson(AzureConfig(
           ContainerName("mycontainer"),
           Some(AzureCredentials(AccountName("<REDACTED>"), AccountKey("<REDACTED>"))),
           Azure.mkStdStorageUrl(AccountName("myaccount")),
-          Some(MaxQueueSize(10))))
+          Some(MaxQueueSize(10)),
+          ResourceType.Json))
     }
 
     "does not change config without credentials" >> {
@@ -102,7 +106,8 @@ class AzureDatasourceModuleSpec extends Specification {
         ContainerName("mycontainer"),
         None,
         Azure.mkStdStorageUrl(AccountName("myaccount")),
-        Some(MaxQueueSize(10))))
+        Some(MaxQueueSize(10)),
+        ResourceType.LdJson))
 
       AzureDatasourceModule.sanitizeConfig(cfg) must_=== cfg
     }

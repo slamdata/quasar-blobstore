@@ -18,6 +18,7 @@ package quasar.physical.blobstore.azure
 
 import slamdata.Predef._
 import quasar.blobstore.azure._, configArbitrary._, json._
+import quasar.blobstore.ResourceType
 
 import argonaut._, Argonaut._
 import eu.timepit.refined.auto._
@@ -35,7 +36,8 @@ class JsonSpec extends Specification with ScalaCheck {
           |  "container": "mycontainer",
           |  "credentials": { "accountName": "myname", "accountKey": "mykey" },
           |  "storageUrl": "https://myaccount.blob.core.windows.net/",
-          |  "maxQueueSize": 10
+          |  "maxQueueSize": 10,
+          |  "resourceType": "ldjson"
           |}
         """.stripMargin
 
@@ -44,7 +46,8 @@ class JsonSpec extends Specification with ScalaCheck {
           ContainerName("mycontainer"),
           Some(AzureCredentials(AccountName("myname"), AccountKey("mykey"))),
           Azure.mkStdStorageUrl(AccountName("myaccount")),
-          Some(MaxQueueSize(10))))
+          Some(MaxQueueSize(10)),
+          ResourceType.LdJson))
     }
 
     "succeeds reading config without credentials" >> {
@@ -53,7 +56,8 @@ class JsonSpec extends Specification with ScalaCheck {
           |{
           |  "container": "mycontainer",
           |  "storageUrl": "https://myaccount.blob.core.windows.net/",
-          |  "maxQueueSize": 10
+          |  "maxQueueSize": 10,
+          |  "resourceType": "json"
           |}
         """.stripMargin
 
@@ -62,7 +66,8 @@ class JsonSpec extends Specification with ScalaCheck {
           ContainerName("mycontainer"),
           None,
           Azure.mkStdStorageUrl(AccountName("myaccount")),
-          Some(MaxQueueSize(10))))
+          Some(MaxQueueSize(10)),
+          ResourceType.Json))
     }
 
     "fails reading config with incomplete credentials" >> {

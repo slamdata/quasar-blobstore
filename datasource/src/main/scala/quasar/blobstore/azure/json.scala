@@ -35,5 +35,5 @@ object json {
     casecodec2(AzureCredentials.apply, AzureCredentials.unapply)("accountName", "accountKey")
 
   implicit val codecConfig: CodecJson[AzureConfig] =
-    casecodec4(AzureConfig.apply, AzureConfig.unapply)("container", "credentials", "storageUrl", "maxQueueSize")
+    casecodec5(AzureConfig.apply, AzureConfig.unapply)("container", "credentials", "storageUrl", "maxQueueSize", "resourceType")
 }
