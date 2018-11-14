@@ -39,7 +39,7 @@ jobs:
       script:
         - set -e
         - $SBT transferPublishAndTagResources
-        - TRAVIS_JOB_NUMBER=1 scripts/publishAndTag 'slamdata/quasar-blobstore'
+        - TRAVIS_JOB_NUMBER=1 scripts/publishAndTag 'slamdata/quasar-datasource-azure'
 
       git:
         depth: false
