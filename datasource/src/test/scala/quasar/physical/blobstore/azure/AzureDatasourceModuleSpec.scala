@@ -44,13 +44,19 @@ class AzureDatasourceModuleSpec extends Specification {
   private def init(j: Json) =
     AzureDatasourceModule.lightweightDatasource[IO](j).unsafeRunSync.toEither
 
-  private def cfgToJson(cfg: AzureConfig): Json =
-    Json.obj(
+  private def cfgToJson(cfg: AzureConfig, stripNulls: Boolean = true): Json = {
+    val js = Json.obj(
       "container" -> Json.jString(cfg.containerName.value),
       "credentials" -> cfg.credentials.fold(jNull)(credToJson),
       "storageUrl" -> Json.jString(cfg.storageUrl.value),
       "maxQueueSize" -> cfg.maxQueueSize.fold(jNull)(qs => Json.jNumber(qs.value.value)),
       "resourceType" -> Json.jString(cfg.resourceType.toString.toLowerCase))
+
+    if (stripNulls)
+      js.withObject(j => JsonObject.fromTraversableOnce(j.toList.filter(!_._2.isNull)))
+    else
+      js
+  }
 
   "datasource init" >> {
     "succeeds when correct cfg without credentials" >> {
@@ -108,6 +114,17 @@ class AzureDatasourceModuleSpec extends Specification {
         Azure.mkStdStorageUrl(AccountName("myaccount")),
         Some(MaxQueueSize(10)),
         ResourceType.LdJson))
+
+      AzureDatasourceModule.sanitizeConfig(cfg) must_=== cfg
+    }
+
+    "does not change config with null credentials" >> {
+      val cfg = cfgToJson(AzureConfig(
+        ContainerName("mycontainer"),
+        None,
+        Azure.mkStdStorageUrl(AccountName("myaccount")),
+        None,
+        ResourceType.LdJson), stripNulls = false)
 
       AzureDatasourceModule.sanitizeConfig(cfg) must_=== cfg
     }
