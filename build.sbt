@@ -18,7 +18,7 @@ lazy val root = project
 val quasarVersion = IO.read(file("./quasar-version")).trim
 
 val argonautRefinedVersion = "1.2.0-M8"
-val azureVersion = "10.1.0"
+val azureVersion = "10.2.0"
 val catsEffectVersion = "1.0.0"
 val fs2Version = "1.0.0"
 val nettyVersion = "4.1.28.Final"
