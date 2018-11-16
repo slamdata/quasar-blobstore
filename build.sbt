@@ -47,7 +47,7 @@ lazy val core = project
     datasourceDependencies ++= Seq(
       "com.codecommit"             %% "shims"                      % shimsVersion,
       "com.github.alexarchambault" %% "argonaut-refined_6.2"       % argonautRefinedVersion,
-      "com.microsoft.azure"        %  "azure-storage-blob"         % azureVersion,
+      "com.slamdata"               %  "azure-storage-blob-custom"  % azureVersion,
       "eu.timepit"                 %% "refined-scalacheck"         % refinedVersion,
       // netty-all isn't strictly necessary but takes advantage of native libs.
       // Azure doesn't pull in libs like netty-transport-native-kqueue,

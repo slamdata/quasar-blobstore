@@ -65,8 +65,8 @@ abstract class BlobstoreDatasourceSpec[F[_]: Effect] extends EffectfulQSpec[F] {
       assertPrefixedChildPaths(
         ResourcePath.root(),
         List(
-          //ResourceName("dir1") -> ResourcePathType.prefix,
           ResourceName("extraSmallZips.data") -> ResourcePathType.leafResource,
+          ResourceName("dir1") -> ResourcePathType.prefix,
           ResourceName("prefix3") -> ResourcePathType.prefix,
           ResourceName("testdata") -> ResourcePathType.prefix))
     }
