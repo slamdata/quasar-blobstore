@@ -38,7 +38,8 @@ class BlobstoreDatasource[F[_]: Applicative: MonadResourceErr: RaiseThrowable](
 
   override def evaluate(path: ResourcePath): F[QueryResult[F]] = {
     val bytes = blobstore.get(path)
-    QueryResult.typed(ParsableType.json(jvar, false), bytes).pure[F]
+    val qr: QueryResult[F] = QueryResult.typed[F](ParsableType.json(jvar, false), bytes)
+    qr.pure[F]
   }
 
   override def pathIsResource(path: ResourcePath): F[Boolean] =
