@@ -113,6 +113,11 @@ class AzureBlobstore[F[_]: ConcurrentEffect: MonadResourceErr: RaiseThrowable](
     if (name.endsWith("/")) normalize(name.substring(0, name.length - 1))
     else name
 
+  @SuppressWarnings(Array("org.wartremover.warts.Recursion"))
+  private def normalizePrefix(name: String): String =
+    if (name.endsWith("//")) normalizePrefix(name.substring(0, name.length - 1))
+    else name
+
   private def pathToAzurePath(path: ResourcePath): String = {
     val names = ResourcePath.resourceNamesIso.get(path).map(_.value).toList
     names.mkString("/")
@@ -124,12 +129,12 @@ class AzureBlobstore[F[_]: ConcurrentEffect: MonadResourceErr: RaiseThrowable](
   private def pathToOptions(path: ResourcePath): ListBlobsOptions =
     new ListBlobsOptions()
       .withMaxResults(Integer.valueOf(5000))
-      .withPrefix(pathToPrefix(path))
+      .withPrefix(normalizePrefix(pathToPrefix(path)))
 
   private def pathToPrefix(path: ResourcePath): String = {
     val names = ResourcePath.resourceNamesIso.get(path).map(_.value).toList
-    if (names.isEmpty) ""
-    else names.mkString("", "/", "/")
+    val s = names.mkString("", "/", "/")
+    if (s === "/") "" else s
   }
 
   private def simpleName(s: String): String = {

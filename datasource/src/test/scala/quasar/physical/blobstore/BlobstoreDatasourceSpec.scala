@@ -55,6 +55,12 @@ abstract class BlobstoreDatasourceSpec[F[_]: Effect] extends EffectfulQSpec[F] {
         List(ResourceName("flattenable.data") -> ResourcePathType.leafResource))
     }
 
+    "list nested children (alternative)" >>* {
+      assertPrefixedChildPaths(
+        ResourcePath.root() / ResourceName("dir1") / ResourceName("dir2") / ResourceName("dir3") / ResourceName(""),
+        List(ResourceName("flattenable.data") -> ResourcePathType.leafResource))
+    }
+
     "list nested children 2" >>* {
       assertPrefixedChildPaths(
         ResourcePath.root() / ResourceName("prefix3") / ResourceName("subprefix5"),
@@ -64,6 +70,16 @@ abstract class BlobstoreDatasourceSpec[F[_]: Effect] extends EffectfulQSpec[F] {
     "list children at the root of the bucket" >>* {
       assertPrefixedChildPaths(
         ResourcePath.root(),
+        List(
+          ResourceName("extraSmallZips.data") -> ResourcePathType.leafResource,
+          ResourceName("dir1") -> ResourcePathType.prefix,
+          ResourceName("prefix3") -> ResourcePathType.prefix,
+          ResourceName("testdata") -> ResourcePathType.prefix))
+    }
+
+    "list children at the root of the bucket (alternative)" >>* {
+      assertPrefixedChildPaths(
+        ResourcePath.root() / ResourceName(""),
         List(
           ResourceName("extraSmallZips.data") -> ResourcePathType.leafResource,
           ResourceName("dir1") -> ResourcePathType.prefix,
