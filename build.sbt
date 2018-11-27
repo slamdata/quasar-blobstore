@@ -18,7 +18,7 @@ lazy val root = project
 val quasarVersion = IO.read(file("./quasar-version")).trim
 
 val argonautRefinedVersion = "1.2.0-M8"
-val azureVersion = "10.2.0"
+val azureVersion = "10.3.0"
 val catsEffectVersion = "1.0.0"
 val fs2Version = "1.0.0"
 val nettyVersion = "4.1.28.Final"
@@ -47,7 +47,7 @@ lazy val core = project
     datasourceDependencies ++= Seq(
       "com.codecommit"             %% "shims"                      % shimsVersion,
       "com.github.alexarchambault" %% "argonaut-refined_6.2"       % argonautRefinedVersion,
-      "com.slamdata"               %  "azure-storage-blob-custom"  % azureVersion,
+      "com.microsoft.azure"        %  "azure-storage-blob"         % azureVersion,
       "eu.timepit"                 %% "refined-scalacheck"         % refinedVersion,
       // netty-all isn't strictly necessary but takes advantage of native libs.
       // Azure doesn't pull in libs like netty-transport-native-kqueue,
