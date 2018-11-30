@@ -37,8 +37,23 @@ object Azure {
 
   def mkContainerUrl[F[_]](cfg: AzureConfig)(implicit F: Sync[F]): F[ContainerURL] =
     F.catchNonFatal(new URL(cfg.storageUrl.value)) map { url =>
-      val serviceUrl = new ServiceURL(url,
-        StorageURL.createPipeline(mkCredentials(cfg.credentials), new PipelineOptions))
+      val serviceUrl = new ServiceURL(
+        url,
+        StorageURL.createPipeline(
+          mkCredentials(cfg.credentials),
+          // Azure SDK changed its logging behavior in 10.3.0 (compared to 10.2.0).
+          // In 10.2.0 the standard `new PipelineOptions` could be used, but in 10.3.0
+          // this results in messages being logged to console in eg quasar's repl
+          // (despite having no console logger configured).
+          // Still not having a full understanding of how this logging is supposed to work
+          // exactly (e.g. `withLogger`) but adding `LoggingOptions` with
+          // `disableDefaultLogging = true` seems to be fixing it.
+          // As an aside, in case we need to look at this in the future,
+          // Azure SDK has 2 loggers for some reason:
+          // - `com.microsoft.azure.storage.blob.LoggingFactory`
+          // - `Azure Storage Java SDK`
+          new PipelineOptions().withLoggingOptions(
+            new LoggingOptions(3000, true))))
       serviceUrl.createContainerURL(cfg.containerName.value)
     }
 }
