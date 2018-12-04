@@ -18,8 +18,8 @@ package quasar.blobstore.azure
 
 import slamdata.Predef._
 import quasar.api.resource.{ResourceName, ResourcePath, ResourcePathType}
-import quasar.blobstore.azure.requests.{BlobPropsArgs, DownloadArgs, ListBlobHierarchyArgs}
-import quasar.blobstore.{Blobstore, BlobstoreStatus, ops}
+import quasar.blobstore.azure.requests.{BlobPropsArgs, ListBlobHierarchyArgs}
+import quasar.blobstore.{Blobstore, BlobstoreStatus, Converter, ops}
 import quasar.connector.{MonadResourceErr, ResourceError}
 
 import java.lang.Integer
@@ -36,19 +36,20 @@ class AzureBlobstore[F[_]: ConcurrentEffect: MonadResourceErr: RaiseThrowable](
   containerURL: ContainerURL,
   maxQueueSize: MaxQueueSize) extends Blobstore[F] {
 
-  private val statusService = AzureStatusService(containerURL)
+  implicit val resourcePathToBlobURL: Converter[F, ResourcePath, BlobURL] =
+    new Converter[F, ResourcePath, BlobURL] {
+      override def convert(a: ResourcePath): F[BlobURL] = pathToBlobUrl(a).pure[F]
+    }
 
-  def get(path: ResourcePath): Stream[F, Byte] =
-    ops.service[F, ResourcePath, DownloadArgs, DownloadResponse, Stream[F, Byte], Stream[F, Byte]](
-      p => DownloadArgs(pathToBlobUrl(p), BlobRange.DEFAULT, BlobAccessConditions.NONE, false, Context.NONE).pure[F],
-      requests.downloadRequest[F],
-      handlers.toByteStream(new ReliableDownloadOptions, maxQueueSize),
-      Stream.force(_)
-        .handleErrorWith {
-          case ex: StorageException if ex.statusCode() === 404 =>
-            Stream.raiseError(ResourceError.throwableP(ResourceError.pathNotFound(path)))
-        }
-    ).apply(path)
+  private def errorHandler[A](path: ResourcePath): Throwable => Stream[F, A] = {
+    case ex: StorageException if ex.statusCode() === 404 =>
+      Stream.raiseError(ResourceError.throwableP(ResourceError.pathNotFound(path)))
+  }
+
+  private val statusService = AzureStatusService(containerURL)
+  private val getService = AzureGetService(maxQueueSize, errorHandler)
+
+  def get(path: ResourcePath): Stream[F, Byte] = getService.get(path)
 
   def isResource(path: ResourcePath): F[Boolean] =
     ops.service[F, ResourcePath, BlobPropsArgs, BlobGetPropertiesResponse, Boolean, F[Boolean]](

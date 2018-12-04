@@ -16,16 +16,6 @@
 
 package quasar.blobstore
 
-import slamdata.Predef._
-
-import fs2.Stream
-
-object services {
-  trait StatusService[F[_], S] {
-    def status: F[S]
-  }
-
-  trait GetService[F[_], P] {
-    def get(path: P): Stream[F, Byte]
-  }
+trait Converter[F[_], A, B] {
+  def convert(a: A): F[B]
 }
