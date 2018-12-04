@@ -18,12 +18,12 @@ package quasar.blobstore.azure
 
 import slamdata.Predef._
 import quasar.api.resource.{ResourceName, ResourcePath, ResourcePathType}
-import quasar.blobstore.{Blobstore, BlobstoreStatus}
+import quasar.blobstore.azure.requests.ContainerPropsArgs
+import quasar.blobstore.{Blobstore, BlobstoreStatus, ops}
 import quasar.connector.{MonadResourceErr, ResourceError}
 
 import java.lang.Integer
 import scala.collection.JavaConverters._
-import scala.util.control.NonFatal
 
 import cats.effect._
 import cats.implicits._
@@ -65,19 +65,12 @@ class AzureBlobstore[F[_]: ConcurrentEffect: MonadResourceErr: RaiseThrowable](
     }
   }
 
-  def status: F[BlobstoreStatus] = {
-    val res = for {
-      single <- F.delay(containerURL.getProperties(new LeaseAccessConditions(), Context.NONE))
-      a <- rx.singleToAsync(single)
-    } yield BlobstoreStatus.ok()
-
-    res.recover {
-      case ex: StorageException if ex.statusCode === 403 => BlobstoreStatus.noAccess()
-      case ex: StorageException if ex.statusCode === 404 => BlobstoreStatus.notFound()
-      case ex: StorageException => BlobstoreStatus.notOk(ex.message())
-      case NonFatal(t) => BlobstoreStatus.notOk(t.getMessage)
-    }
-  }
+  def status: F[BlobstoreStatus] =
+    ops.service[F, Unit, ContainerPropsArgs, ContainerGetPropertiesResponse, BlobstoreStatus, F[BlobstoreStatus]](
+      _ => requests.ContainerPropsArgs(containerURL, new LeaseAccessConditions, Context.NONE).pure[F],
+      requests.containerPropsRequest[F],
+      _ => BlobstoreStatus.ok().pure[F],
+      handlers.recoverToBlobstoreStatus[F, BlobstoreStatus]).apply(())
 
   def list(path: ResourcePath): F[Option[Stream[F, (ResourceName, ResourcePathType)]]] = {
     val resp: F[ContainerListBlobHierarchySegmentResponse] = for {
