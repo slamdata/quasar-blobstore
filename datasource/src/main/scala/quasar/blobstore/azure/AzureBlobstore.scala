@@ -18,7 +18,7 @@ package quasar.blobstore.azure
 
 import slamdata.Predef._
 import quasar.api.resource.{ResourceName, ResourcePath, ResourcePathType}
-import quasar.blobstore.azure.requests.{BlobPropsArgs, ContainerPropsArgs, DownloadArgs, ListBlobHierarchyArgs}
+import quasar.blobstore.azure.requests.{BlobPropsArgs, DownloadArgs, ListBlobHierarchyArgs}
 import quasar.blobstore.{Blobstore, BlobstoreStatus, ops}
 import quasar.connector.{MonadResourceErr, ResourceError}
 
@@ -35,6 +35,8 @@ import fs2.{RaiseThrowable, Stream}
 class AzureBlobstore[F[_]: ConcurrentEffect: MonadResourceErr: RaiseThrowable](
   containerURL: ContainerURL,
   maxQueueSize: MaxQueueSize) extends Blobstore[F] {
+
+  private val statusService = AzureStatusService(containerURL)
 
   def get(path: ResourcePath): Stream[F, Byte] =
     ops.service[F, ResourcePath, DownloadArgs, DownloadResponse, Stream[F, Byte], Stream[F, Byte]](
@@ -56,19 +58,15 @@ class AzureBlobstore[F[_]: ConcurrentEffect: MonadResourceErr: RaiseThrowable](
       _.recover { case _: StorageException => false }
     ).apply(path)
 
-  def status: F[BlobstoreStatus] =
-    ops.service[F, Unit, ContainerPropsArgs, ContainerGetPropertiesResponse, BlobstoreStatus, F[BlobstoreStatus]](
-      _ => requests.ContainerPropsArgs(containerURL, new LeaseAccessConditions, Context.NONE).pure[F],
-      requests.containerPropsRequest[F],
-      _ => BlobstoreStatus.ok().pure[F],
-      handlers.recoverToBlobstoreStatus[F, BlobstoreStatus]).apply(())
+  def status: F[BlobstoreStatus] = statusService.status
 
   def list(path: ResourcePath): F[Option[Stream[F, (ResourceName, ResourcePathType)]]] =
     ops.service[F, ResourcePath, ListBlobHierarchyArgs, ContainerListBlobHierarchySegmentResponse, Option[Stream[F, (ResourceName, ResourcePathType)]], F[Option[Stream[F, (ResourceName, ResourcePathType)]]]](
       p => ListBlobHierarchyArgs(containerURL, None, "/", pathToOptions(p), Context.NONE).pure[F],
       requests.listRequest[F],
       toResourceNamesAndTypes(_, path).pure[F],
-      x => x).apply(path)
+      x => x
+    ).apply(path)
 
   private def toResourceNamesAndTypes(r: ContainerListBlobHierarchySegmentResponse, path: ResourcePath)
       : Option[Stream[F, (ResourceName, ResourcePathType)]] = {
