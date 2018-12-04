@@ -18,7 +18,7 @@ package quasar.blobstore.azure
 
 import slamdata.Predef._
 import quasar.api.resource.{ResourceName, ResourcePath, ResourcePathType}
-import quasar.blobstore.azure.requests.ContainerPropsArgs
+import quasar.blobstore.azure.requests.{ContainerPropsArgs, ListBlobHierarchyArgs}
 import quasar.blobstore.{Blobstore, BlobstoreStatus, ops}
 import quasar.connector.{MonadResourceErr, ResourceError}
 
@@ -72,17 +72,20 @@ class AzureBlobstore[F[_]: ConcurrentEffect: MonadResourceErr: RaiseThrowable](
       _ => BlobstoreStatus.ok().pure[F],
       handlers.recoverToBlobstoreStatus[F, BlobstoreStatus]).apply(())
 
-  def list(path: ResourcePath): F[Option[Stream[F, (ResourceName, ResourcePathType)]]] = {
-    val resp: F[ContainerListBlobHierarchySegmentResponse] = for {
-      single <- listBlobs(None, pathToOptions(path))
-      r <- rx.singleToAsync(single)
-    } yield r
+  def list(path: ResourcePath): F[Option[Stream[F, (ResourceName, ResourcePathType)]]] =
+    ops.service[F, ResourcePath, ListBlobHierarchyArgs, ContainerListBlobHierarchySegmentResponse, Option[Stream[F, (ResourceName, ResourcePathType)]], F[Option[Stream[F, (ResourceName, ResourcePathType)]]]](
+      p => ListBlobHierarchyArgs(containerURL, None, "/", pathToOptions(p), Context.NONE).pure[F],
+      requests.listRequest[F],
+      toResourceNamesAndTypes(_, path).pure[F],
+      x => x).apply(path)
 
-    resp.map(r => Option(r.body.segment)).map { _.map { segm =>
+  private def toResourceNamesAndTypes(r: ContainerListBlobHierarchySegmentResponse, path: ResourcePath)
+      : Option[Stream[F, (ResourceName, ResourcePathType)]] = {
+    Option(r.body.segment).map { segm =>
       val l = segm.blobItems.asScala.map(blobItemToNameType(_, path)) ++
         segm.blobPrefixes.asScala.map(blobPrefixToNameType(_, path))
       Stream.emits(l).covary[F]
-    }}
+    }
   }
 
   private def blobItemToNameType(i: BlobItem, path: ResourcePath): (ResourceName, ResourcePathType) =
@@ -96,10 +99,6 @@ class AzureBlobstore[F[_]: ConcurrentEffect: MonadResourceErr: RaiseThrowable](
 
   private def getProperties(blobUrl: BlobURL): F[Single[BlobGetPropertiesResponse]] =
     F.delay(blobUrl.getProperties(BlobAccessConditions.NONE, Context.NONE))
-
-  @SuppressWarnings(Array("org.wartremover.warts.Null"))
-  private def listBlobs(marker: Option[String], options: ListBlobsOptions): F[Single[ContainerListBlobHierarchySegmentResponse]] =
-    F.delay(containerURL.listBlobsHierarchySegment(marker.orNull, "/", options, Context.NONE))
 
   @SuppressWarnings(Array("org.wartremover.warts.Recursion"))
   private def normalize(name: String): String =
