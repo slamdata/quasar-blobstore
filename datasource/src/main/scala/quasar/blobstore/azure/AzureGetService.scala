@@ -22,14 +22,13 @@ import quasar.blobstore.azure.requests.DownloadArgs
 import quasar.blobstore.services.GetService
 
 import cats.effect.ConcurrentEffect
-import cats.syntax.applicative._
-import cats.syntax.flatMap._
+import cats.syntax.functor._
 import com.microsoft.azure.storage.blob._
 import com.microsoft.rest.v2.Context
 import fs2.Stream
 
 class AzureGetService[F[_]: ConcurrentEffect, P](
-    args: BlobURL => DownloadArgs,
+    mkArgs: BlobURL => DownloadArgs,
     reliableDownloadOptions: ReliableDownloadOptions,
     maxQueueSize: MaxQueueSize,
     errorHandler: P => Throwable => Stream[F, Byte])(
@@ -38,7 +37,7 @@ class AzureGetService[F[_]: ConcurrentEffect, P](
 
   override def get(path: P): Stream[F, Byte] =
     ops.service[F, P, DownloadArgs, DownloadResponse, Stream[F, Byte], Stream[F, Byte]](
-      CP.convert(_) >>= (args(_).pure[F]),
+      CP.convert(_).map(mkArgs),
       requests.downloadRequest[F],
       handlers.toByteStream(reliableDownloadOptions, maxQueueSize),
       Stream.force(_).handleErrorWith(errorHandler(path))

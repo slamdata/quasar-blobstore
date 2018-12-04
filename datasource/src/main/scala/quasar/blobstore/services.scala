@@ -28,4 +28,8 @@ object services {
   trait GetService[F[_], P] {
     def get(path: P): Stream[F, Byte]
   }
+
+  trait PropsService[F[_], P, R] {
+    def props(path: P): F[R]
+  }
 }

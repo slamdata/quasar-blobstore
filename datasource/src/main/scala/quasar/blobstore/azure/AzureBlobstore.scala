@@ -18,7 +18,7 @@ package quasar.blobstore.azure
 
 import slamdata.Predef._
 import quasar.api.resource.{ResourceName, ResourcePath, ResourcePathType}
-import quasar.blobstore.azure.requests.{BlobPropsArgs, ListBlobHierarchyArgs}
+import quasar.blobstore.azure.requests.ListBlobHierarchyArgs
 import quasar.blobstore.{Blobstore, BlobstoreStatus, Converter, ops}
 import quasar.connector.{MonadResourceErr, ResourceError}
 
@@ -36,9 +36,16 @@ class AzureBlobstore[F[_]: ConcurrentEffect: MonadResourceErr: RaiseThrowable](
   containerURL: ContainerURL,
   maxQueueSize: MaxQueueSize) extends Blobstore[F] {
 
+  private val F = ConcurrentEffect[F]
+
   implicit val resourcePathToBlobURL: Converter[F, ResourcePath, BlobURL] =
     new Converter[F, ResourcePath, BlobURL] {
-      override def convert(a: ResourcePath): F[BlobURL] = pathToBlobUrl(a).pure[F]
+      override def convert(a: ResourcePath): F[BlobURL] = F.delay(pathToBlobUrl(a))
+    }
+
+  implicit val propsResponseToBoolean: Converter[F, BlobGetPropertiesResponse, Boolean] =
+    new Converter[F, BlobGetPropertiesResponse, Boolean]{
+      override def convert(a: BlobGetPropertiesResponse): F[Boolean] = true.pure[F]
     }
 
   private def errorHandler[A](path: ResourcePath): Throwable => Stream[F, A] = {
@@ -48,16 +55,12 @@ class AzureBlobstore[F[_]: ConcurrentEffect: MonadResourceErr: RaiseThrowable](
 
   private val statusService = AzureStatusService(containerURL)
   private val getService = AzureGetService(maxQueueSize, errorHandler)
+  private val propsService = AzurePropsService[F, ResourcePath, Boolean](
+    _.recover { case _: StorageException => false })
 
   def get(path: ResourcePath): Stream[F, Byte] = getService.get(path)
 
-  def isResource(path: ResourcePath): F[Boolean] =
-    ops.service[F, ResourcePath, BlobPropsArgs, BlobGetPropertiesResponse, Boolean, F[Boolean]](
-      p => BlobPropsArgs(pathToBlobUrl(p), BlobAccessConditions.NONE, Context.NONE).pure[F],
-      requests.blobPropsRequest[F],
-      _ => true.pure[F],
-      _.recover { case _: StorageException => false }
-    ).apply(path)
+  def isResource(path: ResourcePath): F[Boolean] = propsService.props(path)
 
   def status: F[BlobstoreStatus] = statusService.status
 
