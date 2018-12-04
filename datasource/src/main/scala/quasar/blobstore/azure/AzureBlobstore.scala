@@ -18,8 +18,7 @@ package quasar.blobstore.azure
 
 import slamdata.Predef._
 import quasar.api.resource.{ResourceName, ResourcePath, ResourcePathType}
-import quasar.blobstore.azure.requests.ListBlobHierarchyArgs
-import quasar.blobstore.{Blobstore, BlobstoreStatus, Converter, ops}
+import quasar.blobstore.{Blobstore, BlobstoreStatus, Converter}
 import quasar.connector.{MonadResourceErr, ResourceError}
 
 import java.lang.Integer
@@ -29,7 +28,6 @@ import cats.effect._
 import cats.implicits._
 import com.microsoft.azure.storage.blob._
 import com.microsoft.azure.storage.blob.models._
-import com.microsoft.rest.v2.Context
 import fs2.{RaiseThrowable, Stream}
 
 class AzureBlobstore[F[_]: ConcurrentEffect: MonadResourceErr: RaiseThrowable](
@@ -40,12 +38,23 @@ class AzureBlobstore[F[_]: ConcurrentEffect: MonadResourceErr: RaiseThrowable](
 
   implicit val resourcePathToBlobURL: Converter[F, ResourcePath, BlobURL] =
     new Converter[F, ResourcePath, BlobURL] {
-      override def convert(a: ResourcePath): F[BlobURL] = F.delay(pathToBlobUrl(a))
+      override def convert(p: ResourcePath): F[BlobURL] = F.delay(pathToBlobUrl(p))
+    }
+
+  implicit val resourcePathToListBlobsOptions: Converter[F, ResourcePath, ListBlobsOptions] =
+    new Converter[F, ResourcePath, ListBlobsOptions] {
+      override def convert(p: ResourcePath): F[ListBlobsOptions] = pathToOptions(p).pure[F]
     }
 
   implicit val propsResponseToBoolean: Converter[F, BlobGetPropertiesResponse, Boolean] =
     new Converter[F, BlobGetPropertiesResponse, Boolean]{
-      override def convert(a: BlobGetPropertiesResponse): F[Boolean] = true.pure[F]
+      override def convert(r: BlobGetPropertiesResponse): F[Boolean] = true.pure[F]
+    }
+
+  implicit val listResponseToResourceNamesAndTypes: Converter[F, (ContainerListBlobHierarchySegmentResponse, ResourcePath), Option[Stream[F, (ResourceName, ResourcePathType)]]] =
+    new Converter[F, (ContainerListBlobHierarchySegmentResponse, ResourcePath), Option[Stream[F, (ResourceName, ResourcePathType)]]] {
+      override def convert(pair: (ContainerListBlobHierarchySegmentResponse, ResourcePath)): F[Option[Stream[F, (ResourceName, ResourcePathType)]]] =
+        toResourceNamesAndTypes(pair._1, pair._2).pure[F]
     }
 
   private def errorHandler[A](path: ResourcePath): Throwable => Stream[F, A] = {
@@ -54,6 +63,7 @@ class AzureBlobstore[F[_]: ConcurrentEffect: MonadResourceErr: RaiseThrowable](
   }
 
   private val statusService = AzureStatusService(containerURL)
+  private val listService = AzureListService[F, ResourcePath, (ResourceName, ResourcePathType)](containerURL, x => x)
   private val getService = AzureGetService(maxQueueSize, errorHandler)
   private val propsService = AzurePropsService[F, ResourcePath, Boolean](
     _.recover { case _: StorageException => false })
@@ -65,12 +75,7 @@ class AzureBlobstore[F[_]: ConcurrentEffect: MonadResourceErr: RaiseThrowable](
   def status: F[BlobstoreStatus] = statusService.status
 
   def list(path: ResourcePath): F[Option[Stream[F, (ResourceName, ResourcePathType)]]] =
-    ops.service[F, ResourcePath, ListBlobHierarchyArgs, ContainerListBlobHierarchySegmentResponse, Option[Stream[F, (ResourceName, ResourcePathType)]], F[Option[Stream[F, (ResourceName, ResourcePathType)]]]](
-      p => ListBlobHierarchyArgs(containerURL, None, "/", pathToOptions(p), Context.NONE).pure[F],
-      requests.listRequest[F],
-      toResourceNamesAndTypes(_, path).pure[F],
-      x => x
-    ).apply(path)
+    listService.list(path)
 
   private def toResourceNamesAndTypes(r: ContainerListBlobHierarchySegmentResponse, path: ResourcePath)
       : Option[Stream[F, (ResourceName, ResourcePathType)]] = {

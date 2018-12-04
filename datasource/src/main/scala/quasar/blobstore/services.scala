@@ -21,6 +21,7 @@ import slamdata.Predef._
 import fs2.Stream
 
 object services {
+
   trait StatusService[F[_], S] {
     def status: F[S]
   }
@@ -31,5 +32,9 @@ object services {
 
   trait PropsService[F[_], P, R] {
     def props(path: P): F[R]
+  }
+
+  trait ListService[F[_], P, R] {
+    def list(path: P): F[Option[Stream[F, R]]]
   }
 }
