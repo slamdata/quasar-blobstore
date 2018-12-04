@@ -18,7 +18,7 @@ package quasar.blobstore.azure
 
 import slamdata.Predef._
 import quasar.api.resource.{ResourceName, ResourcePath, ResourcePathType}
-import quasar.blobstore.azure.requests.{ContainerPropsArgs, ListBlobHierarchyArgs}
+import quasar.blobstore.azure.requests.{BlobPropsArgs, ContainerPropsArgs, ListBlobHierarchyArgs}
 import quasar.blobstore.{Blobstore, BlobstoreStatus, ops}
 import quasar.connector.{MonadResourceErr, ResourceError}
 
@@ -54,16 +54,13 @@ class AzureBlobstore[F[_]: ConcurrentEffect: MonadResourceErr: RaiseThrowable](
       }
   }
 
-  def isResource(path: ResourcePath): F[Boolean] = {
-    val res: F[Boolean] = for {
-      single <- getProperties(pathToBlobUrl(path))
-      _ <- rx.singleToAsync(single)
-    } yield true
-
-    res.recover {
-      case _: StorageException => false
-    }
-  }
+  def isResource(path: ResourcePath): F[Boolean] =
+    ops.service[F, ResourcePath, BlobPropsArgs, BlobGetPropertiesResponse, Boolean, F[Boolean]](
+      p => BlobPropsArgs(pathToBlobUrl(p), BlobAccessConditions.NONE, Context.NONE).pure[F],
+      requests.blobPropsRequest[F],
+      _ => true.pure[F],
+      _.recover { case _: StorageException => false }
+    ).apply(path)
 
   def status: F[BlobstoreStatus] =
     ops.service[F, Unit, ContainerPropsArgs, ContainerGetPropertiesResponse, BlobstoreStatus, F[BlobstoreStatus]](
@@ -96,9 +93,6 @@ class AzureBlobstore[F[_]: ConcurrentEffect: MonadResourceErr: RaiseThrowable](
 
   private def download(blobUrl: BlobURL, range: BlobRange): F[Single[DownloadResponse]] =
     F.delay(blobUrl.download(range, BlobAccessConditions.NONE, false, Context.NONE))
-
-  private def getProperties(blobUrl: BlobURL): F[Single[BlobGetPropertiesResponse]] =
-    F.delay(blobUrl.getProperties(BlobAccessConditions.NONE, Context.NONE))
 
   @SuppressWarnings(Array("org.wartremover.warts.Recursion"))
   private def normalize(name: String): String =
