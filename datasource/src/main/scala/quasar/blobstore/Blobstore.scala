@@ -25,5 +25,4 @@ trait Blobstore[F[_]] {
 
   def list(path: ResourcePath): F[Option[Stream[F, (ResourceName, ResourcePathType)]]]
 
-  def isResource(path: ResourcePath): F[Boolean]
 }

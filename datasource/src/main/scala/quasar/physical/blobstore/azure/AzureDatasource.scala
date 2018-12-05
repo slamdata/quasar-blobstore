@@ -26,25 +26,33 @@ import quasar.blobstore.azure.{converters => azureConverters, _}
 import quasar.blobstore.paths.BlobPath
 import quasar.connector.{MonadResourceErr, ResourceError}
 import quasar.connector.ParsableType.JsonVariant
-import quasar.physical.blobstore.BlobstoreDatasource
 
-import cats.Applicative
+import cats.Monad
 import cats.effect.ConcurrentEffect
 import cats.instances.int._
+import cats.syntax.applicativeError._
 import cats.syntax.eq._
 import cats.syntax.functor._
 import com.microsoft.azure.storage.blob.StorageException
+import com.microsoft.azure.storage.blob.models.BlobGetPropertiesResponse
 import eu.timepit.refined.auto._
 import fs2.{RaiseThrowable, Stream}
 
 class AzureDatasource[
-  F[_]: Applicative: MonadResourceErr: RaiseThrowable,
+  F[_]: Monad: MonadResourceErr: RaiseThrowable,
   BP: Converter[F, ResourcePath, ?]](
   statusService: AzureStatusService[F],
+  propsService: AzurePropsService[F, BP, Boolean],
   getService: AzureGetService[F, BP],
   azureBlobstore: AzureBlobstore[F],
   jsonVariant: JsonVariant)
-  extends BlobstoreDatasource[F, BP](AzureDatasource.dsType, jsonVariant, statusService.status, getService, azureBlobstore)
+  extends BlobstoreDatasource[F, BP](
+    AzureDatasource.dsType,
+    jsonVariant,
+    statusService.status,
+    propsService.props,
+    getService.get,
+    azureBlobstore)
 
 object AzureDatasource {
   val dsType: DatasourceType = DatasourceType("azure", 1L)
@@ -58,13 +66,14 @@ object AzureDatasource {
     Azure.mkContainerUrl[F](cfg) map {c =>
       import converters._
       implicit val CBP = azureConverters.blobPathToBlobURL(c)
+      implicit val C = Converter.pure[F, BlobGetPropertiesResponse, Boolean](_ => true)
 
-      val ds = new AzureDatasource[F, BlobPath](
+      new AzureDatasource[F, BlobPath](
         AzureStatusService(c),
+        AzurePropsService[F, BlobPath, Boolean](_.recover { case _: StorageException => false }),
         AzureGetService[F, BlobPath](cfg.maxQueueSize.getOrElse(MaxQueueSize.default), errorHandler[F, Byte]),
         new AzureBlobstore(c),
         toJsonVariant(cfg.resourceType))
-      ds
     }
 
   private def toJsonVariant(resourceType: ResourceType): JsonVariant =

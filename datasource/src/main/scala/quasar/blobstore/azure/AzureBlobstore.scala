@@ -33,21 +33,9 @@ import fs2.{RaiseThrowable, Stream}
 class AzureBlobstore[F[_]: ConcurrentEffect: MonadResourceErr: RaiseThrowable](
   containerURL: ContainerURL) extends Blobstore[F] {
 
-  private val F = ConcurrentEffect[F]
-
-  implicit val resourcePathToBlobURL: Converter[F, ResourcePath, BlobURL] =
-    new Converter[F, ResourcePath, BlobURL] {
-      override def convert(p: ResourcePath): F[BlobURL] = F.delay(pathToBlobUrl(p))
-    }
-
   implicit val resourcePathToListBlobsOptions: Converter[F, ResourcePath, ListBlobsOptions] =
     new Converter[F, ResourcePath, ListBlobsOptions] {
       override def convert(p: ResourcePath): F[ListBlobsOptions] = pathToOptions(p).pure[F]
-    }
-
-  implicit val propsResponseToBoolean: Converter[F, BlobGetPropertiesResponse, Boolean] =
-    new Converter[F, BlobGetPropertiesResponse, Boolean]{
-      override def convert(r: BlobGetPropertiesResponse): F[Boolean] = true.pure[F]
     }
 
   implicit val listResponseToResourceNamesAndTypes: Converter[F, (ContainerListBlobHierarchySegmentResponse, ResourcePath), Option[Stream[F, (ResourceName, ResourcePathType)]]] =
@@ -56,12 +44,7 @@ class AzureBlobstore[F[_]: ConcurrentEffect: MonadResourceErr: RaiseThrowable](
         toResourceNamesAndTypes(pair._1, pair._2).pure[F]
     }
 
-
   private val listService = AzureListService[F, ResourcePath, (ResourceName, ResourcePathType)](containerURL, x => x)
-  private val propsService = AzurePropsService[F, ResourcePath, Boolean](
-    _.recover { case _: StorageException => false })
-
-  def isResource(path: ResourcePath): F[Boolean] = propsService.props(path)
 
   def list(path: ResourcePath): F[Option[Stream[F, (ResourceName, ResourcePathType)]]] =
     listService.list(path)
@@ -90,14 +73,6 @@ class AzureBlobstore[F[_]: ConcurrentEffect: MonadResourceErr: RaiseThrowable](
   private def normalizePrefix(name: String): String =
     if (name.endsWith("//")) normalizePrefix(name.substring(0, name.length - 1))
     else name
-
-  private def pathToAzurePath(path: ResourcePath): String = {
-    val names = ResourcePath.resourceNamesIso.get(path).map(_.value).toList
-    names.mkString("/")
-  }
-
-  private def pathToBlobUrl(path: ResourcePath): BlobURL =
-    containerURL.createBlobURL(pathToAzurePath(path))
 
   private def pathToOptions(path: ResourcePath): ListBlobsOptions =
     new ListBlobsOptions()
