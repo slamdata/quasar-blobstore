@@ -18,7 +18,7 @@ package quasar.blobstore.azure
 
 import slamdata.Predef._
 import quasar.blobstore.Converter
-import quasar.blobstore.paths.{BlobPath, PrefixPath}
+import quasar.blobstore.paths._
 
 import java.lang.Integer
 
@@ -26,7 +26,9 @@ import cats.Applicative
 import cats.effect.Sync
 import cats.instances.string._
 import cats.syntax.eq._
+import com.microsoft.azure.storage.blob.models.{BlobItem, BlobPrefix, ContainerListBlobHierarchySegmentResponse}
 import com.microsoft.azure.storage.blob.{BlobListingDetails, BlobURL, ContainerURL, ListBlobsOptions}
+import fs2.Stream
 
 object converters {
 
@@ -70,4 +72,23 @@ object converters {
     if (name.endsWith("//")) normalizePrefix(name.substring(0, name.length - 1))
     else name
 
+  def toBlobstorePaths[F[_]](r: ContainerListBlobHierarchySegmentResponse)
+      : Option[Stream[F, BlobstorePath]] = {
+    import scala.collection.JavaConverters._
+
+    Option(r.body.segment).map { segm =>
+      val l = segm.blobItems.asScala.map(blobItemToBlobPath) ++
+        segm.blobPrefixes.asScala.map(blobPrefixToPrefixPath)
+      Stream.emits(l).covary[F]
+    }
+  }
+
+  def blobItemToBlobPath(blobItem: BlobItem): BlobstorePath =
+    BlobPath(toPath(blobItem.name))
+
+  def blobPrefixToPrefixPath(blobPrefix: BlobPrefix): BlobstorePath =
+    PrefixPath(toPath(blobPrefix.name))
+
+  def toPath(s: String): Path =
+    s.split("""/""").map(PathElem(_)).toList
 }

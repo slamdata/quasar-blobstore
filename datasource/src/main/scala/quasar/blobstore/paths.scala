@@ -24,6 +24,11 @@ object paths {
 
   type Path = List[PathElem]
 
-  final case class PrefixPath(path: Path)
-  final case class BlobPath(path: Path)
+
+  trait BlobstorePath {
+    def path: Path
+  }
+
+  final case class PrefixPath(path: Path) extends BlobstorePath
+  final case class BlobPath(path: Path) extends BlobstorePath
 }

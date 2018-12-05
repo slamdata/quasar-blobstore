@@ -16,13 +16,13 @@
 
 package quasar.physical.blobstore
 
-import quasar.api.resource.{ResourceName, ResourcePath}
+import slamdata.Predef._
+import quasar.api.resource.{ResourceName, ResourcePath, ResourcePathType}
 import quasar.blobstore.Converter
-import quasar.blobstore.paths.{BlobPath, Path, PathElem, PrefixPath}
+import quasar.blobstore.paths._
 
 import cats.Applicative
 import scalaz.IList
-
 
 object converters {
 
@@ -43,5 +43,17 @@ object converters {
 
   def blobPathToResourcePath(path: BlobPath): ResourcePath =
     ResourcePath.resourceNamesIso(IList.fromList(path.path.map(e => ResourceName(e.value))))
+
+  def toResourceNameType(p: BlobstorePath): (ResourceName, ResourcePathType) =
+    (toResourceName(p).getOrElse(ResourceName("")), toResourceType(p))
+
+  def toResourceType(p: BlobstorePath): ResourcePathType =
+    p match {
+      case BlobPath(_) => ResourcePathType.LeafResource
+      case PrefixPath(_) => ResourcePathType.Prefix
+    }
+
+  def toResourceName(p: BlobstorePath): Option[ResourceName] =
+    p.path.lastOption.map(p => ResourceName(p.value))
 
 }
