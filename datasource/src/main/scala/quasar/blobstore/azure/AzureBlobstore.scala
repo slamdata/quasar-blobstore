@@ -18,7 +18,7 @@ package quasar.blobstore.azure
 
 import slamdata.Predef._
 import quasar.api.resource.{ResourceName, ResourcePath, ResourcePathType}
-import quasar.blobstore.{Blobstore, BlobstoreStatus, Converter}
+import quasar.blobstore.{Blobstore, Converter}
 import quasar.connector.{MonadResourceErr, ResourceError}
 
 import java.lang.Integer
@@ -62,7 +62,6 @@ class AzureBlobstore[F[_]: ConcurrentEffect: MonadResourceErr: RaiseThrowable](
       Stream.raiseError(ResourceError.throwableP(ResourceError.pathNotFound(path)))
   }
 
-  private val statusService = AzureStatusService(containerURL)
   private val listService = AzureListService[F, ResourcePath, (ResourceName, ResourcePathType)](containerURL, x => x)
   private val getService = AzureGetService(maxQueueSize, errorHandler)
   private val propsService = AzurePropsService[F, ResourcePath, Boolean](
@@ -71,8 +70,6 @@ class AzureBlobstore[F[_]: ConcurrentEffect: MonadResourceErr: RaiseThrowable](
   def get(path: ResourcePath): Stream[F, Byte] = getService.get(path)
 
   def isResource(path: ResourcePath): F[Boolean] = propsService.props(path)
-
-  def status: F[BlobstoreStatus] = statusService.status
 
   def list(path: ResourcePath): F[Option[Stream[F, (ResourceName, ResourcePathType)]]] =
     listService.list(path)

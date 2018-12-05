@@ -33,6 +33,7 @@ import fs2.{RaiseThrowable, Stream}
 class BlobstoreDatasource[F[_]: Applicative: MonadResourceErr: RaiseThrowable](
   val kind: DatasourceType,
   jvar: JsonVariant,
+  blobstoreStatus: F[BlobstoreStatus],
   blobstore: Blobstore[F])
   extends LightweightDatasource[F, Stream[F, ?], QueryResult[F]] {
 
@@ -51,7 +52,7 @@ class BlobstoreDatasource[F[_]: Applicative: MonadResourceErr: RaiseThrowable](
 
   def asDsType: Datasource[F, Stream[F, ?], ResourcePath, QueryResult[F]] = this
 
-  def status: F[BlobstoreStatus] = blobstore.status
+  def status: F[BlobstoreStatus] = blobstoreStatus
 }
 
 object BlobstoreDatasource {
