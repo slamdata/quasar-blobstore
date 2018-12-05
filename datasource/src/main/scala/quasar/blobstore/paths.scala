@@ -16,14 +16,14 @@
 
 package quasar.blobstore
 
-import slamdata.Predef._
-import quasar.api.resource.{ResourceName, ResourcePath, ResourcePathType}
+import slamdata.Predef.{List, String}
 
-import fs2.Stream
+object paths {
 
-trait Blobstore[F[_]] {
+  final case class PathElem(value: String)
 
-  def list(path: ResourcePath): F[Option[Stream[F, (ResourceName, ResourcePathType)]]]
+  type Path = List[PathElem]
 
-  def isResource(path: ResourcePath): F[Boolean]
+  final case class PrefixPath(path: Path)
+  final case class BlobPath(path: Path)
 }

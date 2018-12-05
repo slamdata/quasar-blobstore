@@ -19,7 +19,7 @@ package quasar.blobstore.azure
 import slamdata.Predef._
 import quasar.api.resource.{ResourceName, ResourcePath, ResourcePathType}
 import quasar.blobstore.{Blobstore, Converter}
-import quasar.connector.{MonadResourceErr, ResourceError}
+import quasar.connector.MonadResourceErr
 
 import java.lang.Integer
 import scala.collection.JavaConverters._
@@ -31,8 +31,7 @@ import com.microsoft.azure.storage.blob.models._
 import fs2.{RaiseThrowable, Stream}
 
 class AzureBlobstore[F[_]: ConcurrentEffect: MonadResourceErr: RaiseThrowable](
-  containerURL: ContainerURL,
-  maxQueueSize: MaxQueueSize) extends Blobstore[F] {
+  containerURL: ContainerURL) extends Blobstore[F] {
 
   private val F = ConcurrentEffect[F]
 
@@ -57,17 +56,10 @@ class AzureBlobstore[F[_]: ConcurrentEffect: MonadResourceErr: RaiseThrowable](
         toResourceNamesAndTypes(pair._1, pair._2).pure[F]
     }
 
-  private def errorHandler[A](path: ResourcePath): Throwable => Stream[F, A] = {
-    case ex: StorageException if ex.statusCode() === 404 =>
-      Stream.raiseError(ResourceError.throwableP(ResourceError.pathNotFound(path)))
-  }
 
   private val listService = AzureListService[F, ResourcePath, (ResourceName, ResourcePathType)](containerURL, x => x)
-  private val getService = AzureGetService(maxQueueSize, errorHandler)
   private val propsService = AzurePropsService[F, ResourcePath, Boolean](
     _.recover { case _: StorageException => false })
-
-  def get(path: ResourcePath): Stream[F, Byte] = getService.get(path)
 
   def isResource(path: ResourcePath): F[Boolean] = propsService.props(path)
 

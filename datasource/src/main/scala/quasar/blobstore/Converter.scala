@@ -16,6 +16,19 @@
 
 package quasar.blobstore
 
+import cats.Applicative
+import cats.syntax.applicative._
+
 trait Converter[F[_], A, B] {
   def convert(a: A): F[B]
+}
+
+object Converter {
+  def apply[F[_], A, B](f: A => F[B]): Converter[F, A, B] =
+    new Converter[F, A, B] {
+      override def convert(a: A): F[B] = f(a)
+    }
+
+  def pure[F[_]: Applicative, A, B](f: A => B): Converter[F, A, B] =
+    Converter[F, A, B](f(_).pure[F])
 }
