@@ -19,7 +19,7 @@ package quasar.physical.blobstore
 import slamdata.Predef._
 import quasar.api.datasource.DatasourceType
 import quasar.api.resource.{ResourceName, ResourcePath, ResourcePathType}
-import quasar.blobstore.{Blobstore, BlobstoreStatus, Converter}
+import quasar.blobstore.{BlobstoreStatus, Converter}
 import quasar.connector._
 import ParsableType.JsonVariant
 import quasar.connector.datasource.LightweightDatasource
@@ -31,29 +31,30 @@ import cats.syntax.functor._
 import cats.syntax.flatMap._
 import fs2.{RaiseThrowable, Stream}
 
-class BlobstoreDatasource[F[_]: Monad: MonadResourceErr: RaiseThrowable, BP](
+class BlobstoreDatasource[F[_]: Monad: MonadResourceErr: RaiseThrowable, BP, PP](
   val kind: DatasourceType,
   jvar: JsonVariant,
   blobstoreStatus: F[BlobstoreStatus],
+  list: PP => F[Option[Stream[F, (ResourceName, ResourcePathType)]]]  ,
   isResource: BP => F[Boolean],
-  get: BP => Stream[F, Byte],
-  blobstore: Blobstore[F])(
-  implicit BPC: Converter[F, ResourcePath, BP])
+  get: BP => Stream[F, Byte])(
+  implicit CBP: Converter[F, ResourcePath, BP],
+  CPP: Converter[F, ResourcePath, PP])
   extends LightweightDatasource[F, Stream[F, ?], QueryResult[F]] {
 
   override def evaluate(path: ResourcePath): F[QueryResult[F]] =
   for {
-    blobPath <- BPC.convert(path)
+    blobPath <- CBP.convert(path)
     bytes = get(blobPath)
     qr = QueryResult.typed[F](ParsableType.json(jvar, false), bytes)
   } yield qr
 
   override def pathIsResource(path: ResourcePath): F[Boolean] =
-    BPC.convert(path).flatMap(isResource(_))
+    CBP.convert(path).flatMap(isResource(_))
 
   override def prefixedChildPaths(prefixPath: ResourcePath)
       : F[Option[Stream[F, (ResourceName, ResourcePathType)]]] =
-    blobstore.list(prefixPath)
+    CPP.convert(prefixPath).flatMap(list(_))
 
   def asDsType: Datasource[F, Stream[F, ?], ResourcePath, QueryResult[F]] = this
 

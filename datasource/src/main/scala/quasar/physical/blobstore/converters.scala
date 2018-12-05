@@ -29,6 +29,9 @@ object converters {
   implicit def resourcePathToBlobPath[F[_]: Applicative]: Converter[F, ResourcePath, BlobPath] =
     Converter.pure[F, ResourcePath, BlobPath](toBlobPath)
 
+  implicit def resourcePathToPrefixPath[F[_]: Applicative]: Converter[F, ResourcePath, PrefixPath] =
+    Converter.pure[F, ResourcePath, PrefixPath](toPrefixPath)
+
   def toPrefixPath(path: ResourcePath): PrefixPath =
     PrefixPath(toPath(path))
 

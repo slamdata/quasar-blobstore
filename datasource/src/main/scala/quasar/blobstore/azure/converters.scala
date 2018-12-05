@@ -22,6 +22,7 @@ import quasar.blobstore.paths.{BlobPath, PrefixPath}
 
 import java.lang.Integer
 
+import cats.Applicative
 import cats.effect.Sync
 import cats.instances.string._
 import cats.syntax.eq._
@@ -31,6 +32,10 @@ object converters {
 
   def blobPathToBlobURL[F[_]: Sync](containerURL: ContainerURL): Converter[F, BlobPath, BlobURL] =
     Converter[F, BlobPath, BlobURL](mkBlobUrl[F](containerURL))
+
+  def prefixPathToListBlobOptions[F[_]: Applicative](details: Option[BlobListingDetails], maxResults: Option[Integer])
+      : Converter[F, PrefixPath, ListBlobsOptions] =
+    Converter.pure[F, PrefixPath, ListBlobsOptions](p => mkListBlobsOptions(details, maxResults, Some(p)))
 
   def mkListBlobsOptions(
       details: Option[BlobListingDetails],
