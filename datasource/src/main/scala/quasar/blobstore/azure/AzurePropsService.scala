@@ -43,7 +43,10 @@ class AzurePropsService[F[_]: Async, P, R](
 }
 
 object AzurePropsService {
-  def apply[F[_]: Async, P: Converter[F, ?, BlobURL], R: Converter[F, BlobGetPropertiesResponse, ?]](handler: F[R] => F[R]): AzurePropsService[F, P, R] =
+  def apply[
+      F[_]: Async, P: Converter[F, ?, BlobURL],
+      R: Converter[F, BlobGetPropertiesResponse, ?]](
+      handler: F[R] => F[R]): AzurePropsService[F, P, R] =
     new AzurePropsService[F, P, R](
       BlobPropsArgs(_, BlobAccessConditions.NONE, Context.NONE),
       handler)

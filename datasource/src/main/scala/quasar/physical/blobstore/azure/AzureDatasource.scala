@@ -21,19 +21,19 @@ package azure
 import slamdata.Predef._
 import quasar.api.datasource.DatasourceType
 import quasar.api.resource.ResourcePath
-import quasar.blobstore.{Converter, ResourceType}
+import quasar.blobstore.{BlobstoreStatus, Converter, ResourceType}
 import quasar.blobstore.azure.{converters => azureConverters, _}
 import quasar.blobstore.paths.BlobPath
 import quasar.connector.{MonadResourceErr, ResourceError}
 import quasar.connector.ParsableType.JsonVariant
 
 import cats.Monad
-import cats.effect.ConcurrentEffect
+import cats.effect.{Async, ConcurrentEffect}
 import cats.instances.int._
 import cats.syntax.applicativeError._
 import cats.syntax.eq._
 import cats.syntax.functor._
-import com.microsoft.azure.storage.blob.StorageException
+import com.microsoft.azure.storage.blob.{BlobURL, StorageException}
 import com.microsoft.azure.storage.blob.models.BlobGetPropertiesResponse
 import eu.timepit.refined.auto._
 import fs2.{RaiseThrowable, Stream}
@@ -41,37 +41,47 @@ import fs2.{RaiseThrowable, Stream}
 class AzureDatasource[
   F[_]: Monad: MonadResourceErr: RaiseThrowable,
   BP: Converter[F, ResourcePath, ?]](
-  statusService: AzureStatusService[F],
-  propsService: AzurePropsService[F, BP, Boolean],
-  getService: AzureGetService[F, BP],
+  status: F[BlobstoreStatus],
+  blobPathIsValid: BP => F[Boolean],
+  blobPathGet: BP => Stream[F, Byte],
   azureBlobstore: AzureBlobstore[F],
   jsonVariant: JsonVariant)
   extends BlobstoreDatasource[F, BP](
     AzureDatasource.dsType,
     jsonVariant,
-    statusService.status,
-    propsService.props,
-    getService.get,
+    status,
+    blobPathIsValid,
+    blobPathGet,
     azureBlobstore)
 
 object AzureDatasource {
   val dsType: DatasourceType = DatasourceType("azure", 1L)
+
+  private def isResource[F[_]: Async](implicit CP: Converter[F, BlobPath, BlobURL]): BlobPath => F[Boolean] = {
+    implicit val CR = Converter.pure[F, BlobGetPropertiesResponse, Boolean](_ => true)
+    AzurePropsService[F, BlobPath, Boolean](_.recover { case _: StorageException => false }).props
+  }
 
   private def errorHandler[F[_]: RaiseThrowable, A](path: BlobPath): Throwable => Stream[F, A] = {
     case ex: StorageException if ex.statusCode() === 404 =>
       Stream.raiseError(ResourceError.throwableP(ResourceError.pathNotFound(converters.blobPathToResourcePath(path))))
   }
 
+  private def get[F[_]: ConcurrentEffect](
+    maxQueueSize: MaxQueueSize)(
+    implicit CP: Converter[F, BlobPath, BlobURL])
+      : BlobPath => Stream[F, Byte] =
+    AzureGetService[F, BlobPath](maxQueueSize, errorHandler[F, Byte]).get
+
   def mk[F[_]: ConcurrentEffect: MonadResourceErr](cfg: AzureConfig): F[AzureDatasource[F, BlobPath]] =
     Azure.mkContainerUrl[F](cfg) map {c =>
       import converters._
       implicit val CBP = azureConverters.blobPathToBlobURL(c)
-      implicit val C = Converter.pure[F, BlobGetPropertiesResponse, Boolean](_ => true)
 
       new AzureDatasource[F, BlobPath](
-        AzureStatusService(c),
-        AzurePropsService[F, BlobPath, Boolean](_.recover { case _: StorageException => false }),
-        AzureGetService[F, BlobPath](cfg.maxQueueSize.getOrElse(MaxQueueSize.default), errorHandler[F, Byte]),
+        AzureStatusService(c).status,
+        isResource[F],
+        get[F](cfg.maxQueueSize.getOrElse(MaxQueueSize.default)),
         new AzureBlobstore(c),
         toJsonVariant(cfg.resourceType))
     }
