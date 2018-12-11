@@ -97,7 +97,7 @@ object AzureDatasource {
       new AzureDatasource[F, BlobPath, PrefixPath](
         converters.resourcePathToBlobPathK[F],
         converters.resourcePathToPrefixPathK[F],
-        AzureStatusService(c).status,
+        AzureStatusService.mk(c),
         list(c).map(_.map(_.map(converters.toResourceNameType))),
         isResource[F](blobPathToBlobURLK),
         get[F](blobPathToBlobURLK, cfg.maxQueueSize.getOrElse(MaxQueueSize.default)),

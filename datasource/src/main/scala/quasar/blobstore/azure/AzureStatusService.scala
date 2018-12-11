@@ -16,29 +16,21 @@
 
 package quasar.blobstore.azure
 
-import slamdata.Predef.Unit
-import quasar.blobstore.{BlobstoreStatus, ops}
+import quasar.blobstore.BlobstoreStatus
 import quasar.blobstore.azure.requests.ContainerPropsArgs
-import quasar.blobstore.services.StatusService
 
+import cats.data.Kleisli
 import cats.effect.Async
-import cats.syntax.applicative._
 import com.microsoft.azure.storage.blob.ContainerURL
 import com.microsoft.azure.storage.blob.models.{ContainerGetPropertiesResponse, LeaseAccessConditions}
 import com.microsoft.rest.v2.Context
 
-class AzureStatusService[F[_]: Async](args: ContainerPropsArgs) extends StatusService[F, BlobstoreStatus] {
-  override def status: F[BlobstoreStatus] =
-    ops.service[F, Unit, ContainerPropsArgs, ContainerGetPropertiesResponse, BlobstoreStatus, F[BlobstoreStatus]](
-      _ => args.pure[F],
-      requests.containerPropsRequest[F],
-      _ => BlobstoreStatus.ok().pure[F],
-      handlers.recoverToBlobstoreStatus[F, BlobstoreStatus]
-    ).apply(())
-
-}
-
 object AzureStatusService {
-  def apply[F[_]: Async](containerURL: ContainerURL): AzureStatusService[F] =
-    new AzureStatusService[F](ContainerPropsArgs(containerURL, new LeaseAccessConditions, Context.NONE))
+  def apply[F[_]: Async](args: ContainerPropsArgs): F[BlobstoreStatus] =
+    (requests.containerPropsRequestK[F] andThen
+      Kleisli.pure[F, ContainerGetPropertiesResponse, BlobstoreStatus](BlobstoreStatus.ok()) mapF
+      handlers.recoverToBlobstoreStatus[F, BlobstoreStatus]).apply(args)
+
+  def mk[F[_]: Async](containerURL: ContainerURL): F[BlobstoreStatus] =
+    AzureStatusService[F](ContainerPropsArgs(containerURL, new LeaseAccessConditions, Context.NONE))
 }

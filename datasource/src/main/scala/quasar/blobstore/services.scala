@@ -23,10 +23,6 @@ import fs2.Stream
 
 object services {
 
-  trait StatusService[F[_], S] {
-    def status: F[S]
-  }
-
   type GetService[F[_], P] = Kleisli[F, P, Stream[F, Byte]]
 
   type PropsService[F[_], P, R] = Kleisli[F, P, R]

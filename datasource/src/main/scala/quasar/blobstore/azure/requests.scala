@@ -61,4 +61,7 @@ object requests {
     Sync[F].delay(args.containerURL.getProperties(args.leaseAccessConditions, args.context)) >>=
       rx.singleToAsync[F, ContainerGetPropertiesResponse]
 
+  def containerPropsRequestK[F[_]: Async]: Kleisli[F, ContainerPropsArgs, ContainerGetPropertiesResponse] =
+    Kleisli(containerPropsRequest[F])
+
 }
