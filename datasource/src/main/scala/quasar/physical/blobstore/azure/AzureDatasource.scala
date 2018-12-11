@@ -32,13 +32,13 @@ import java.lang.Integer
 
 import cats.Monad
 import cats.data.Kleisli
-import cats.effect.{Async, ConcurrentEffect}
+import cats.effect.ConcurrentEffect
 import cats.instances.int._
 import cats.syntax.applicative._
 import cats.syntax.applicativeError._
 import cats.syntax.eq._
 import cats.syntax.functor._
-import com.microsoft.azure.storage.blob.{BlobURL, ContainerURL, StorageException}
+import com.microsoft.azure.storage.blob.StorageException
 import eu.timepit.refined.auto._
 import fs2.{RaiseThrowable, Stream}
 
@@ -64,43 +64,36 @@ class AzureDatasource[
 object AzureDatasource {
   val dsType: DatasourceType = DatasourceType("azure", 1L)
 
-  private def isResource[F[_]: Async](toBlobUrl: Kleisli[F, BlobPath, BlobURL]): PropsService[F, BlobPath, Boolean] = {
-    AzurePropsService.mk[F, BlobPath, Boolean](
-      toBlobUrl,
-      Kleisli(_ => true.pure[F]),
-      _.recover { case _: StorageException => false })
-  }
-
   private def errorHandler[F[_]: RaiseThrowable, A](path: BlobPath): Throwable => Stream[F, A] = {
     case ex: StorageException if ex.statusCode() === 404 =>
       Stream.raiseError(ResourceError.throwableP(ResourceError.pathNotFound(converters.blobPathToResourcePath(path))))
-  }
-
-  private def get[F[_]: ConcurrentEffect](
-    toBlobUrl: Kleisli[F, BlobPath, BlobURL],
-    maxQueueSize: MaxQueueSize)
-      : GetService[F, BlobPath] =
-    AzureGetService.mk[F, BlobPath](toBlobUrl, maxQueueSize, errorHandler[F, Byte])
-
-  private def list[F[_]: Async](containerURL: ContainerURL): ListService[F, PrefixPath, BlobstorePath] = {
-    AzureListService.mk[F, PrefixPath, BlobstorePath](
-      azureConverters.prefixPathToListBlobOptionsK(details = None, maxResults = Some(Integer.valueOf(5000))),
-      azureConverters.toBlobstorePathsK,
-      containerURL,
-      x => x)
+    case ex =>
+      Stream.raiseError(ex)
   }
 
   def mk[F[_]: ConcurrentEffect: MonadResourceErr](cfg: AzureConfig): F[AzureDatasource[F, BlobPath, PrefixPath]] =
-    Azure.mkContainerUrl[F](cfg) map {c =>
+    Azure.mkContainerUrl[F](cfg) map { c =>
       val blobPathToBlobURLK = azureConverters.blobPathToBlobURLK(c)
+
+      val listService =
+        AzureListService.mk[F, PrefixPath, BlobstorePath](
+          azureConverters.prefixPathToListBlobOptionsK(details = None, maxResults = Some(Integer.valueOf(5000))),
+          azureConverters.toBlobstorePathsK,
+          c)
 
       new AzureDatasource[F, BlobPath, PrefixPath](
         converters.resourcePathToBlobPathK[F],
         converters.resourcePathToPrefixPathK[F],
         AzureStatusService.mk(c),
-        list(c).map(_.map(_.map(converters.toResourceNameType))),
-        isResource[F](blobPathToBlobURLK),
-        get[F](blobPathToBlobURLK, cfg.maxQueueSize.getOrElse(MaxQueueSize.default)),
+        listService.map(_.map(_.map(converters.toResourceNameType))),
+        AzurePropsService.mk[F, BlobPath, Boolean](
+          blobPathToBlobURLK,
+          Kleisli(_ => true.pure[F]),
+          _.recover { case _: StorageException => false }),
+        AzureGetService.mk[F, BlobPath](
+          blobPathToBlobURLK,
+          cfg.maxQueueSize.getOrElse(MaxQueueSize.default),
+          errorHandler[F, Byte]),
         toJsonVariant(cfg.resourceType))
     }
 

@@ -37,8 +37,8 @@ object AzureGetService {
       errorHandler: P => Throwable => Stream[F, Byte])
       : GetService[F, P] = {
 
-    val getSvc = toBlobUrl andThen
-      Kleisli[F, BlobURL, DownloadArgs](u => mkArgs(u).pure[F]) andThen
+    val getSvc = toBlobUrl map
+      mkArgs andThen
       requests.downloadRequestK andThen
       handlers.toByteStreamK(reliableDownloadOptions, maxQueueSize)
 

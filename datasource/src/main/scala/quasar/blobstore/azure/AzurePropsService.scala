@@ -21,7 +21,6 @@ import quasar.blobstore.services.PropsService
 
 import cats.data.Kleisli
 import cats.effect.Async
-import cats.syntax.applicative._
 import com.microsoft.azure.storage.blob.{BlobAccessConditions, BlobURL}
 import com.microsoft.azure.storage.blob.models.BlobGetPropertiesResponse
 import com.microsoft.rest.v2.Context
@@ -33,8 +32,8 @@ object AzurePropsService {
       mkArgs: BlobURL => BlobPropsArgs,
       handler: F[R] => F[R])
       : PropsService[F, P, R] =
-    toBlobUrl andThen
-      Kleisli[F, BlobURL, BlobPropsArgs](mkArgs(_).pure[F]) andThen
+    toBlobUrl map
+      mkArgs andThen
       requests.blobPropsRequestK andThen
       toResponse mapF
       handler

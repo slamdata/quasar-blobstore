@@ -31,21 +31,18 @@ object AzureListService {
   def apply[F[_]: Async, P, R](
       toListBlobsOption: Kleisli[F, P, ListBlobsOptions],
       toResponse: Kleisli[F, ContainerListBlobHierarchySegmentResponse, Option[Stream[F, R]]],
-      mkArgs: ListBlobsOptions => ListBlobHierarchyArgs,
-      handler: F[Option[Stream[F, R]]] => F[Option[Stream[F, R]]])
+      mkArgs: ListBlobsOptions => ListBlobHierarchyArgs)
       : ListService[F, P, R] =
-    toListBlobsOption map mkArgs andThen requests.listRequestK andThen toResponse mapF handler
+    toListBlobsOption map mkArgs andThen requests.listRequestK andThen toResponse
 
 
   def mk[F[_]: Async, P, R](
       toListBlobsOptions: Kleisli[F, P, ListBlobsOptions],
       toResponse: Kleisli[F, ContainerListBlobHierarchySegmentResponse, Option[Stream[F, R]]],
-      containerURL: ContainerURL,
-      handler: F[Option[Stream[F, R]]] => F[Option[Stream[F, R]]])
+      containerURL: ContainerURL)
       : ListService[F, P, R] =
     AzureListService[F, P, R](
       toListBlobsOptions,
       toResponse,
-      ListBlobHierarchyArgs(containerURL, None, "/", _, Context.NONE),
-      handler)
+      ListBlobHierarchyArgs(containerURL, None, "/", _, Context.NONE))
 }

@@ -45,7 +45,7 @@ object converters {
     Kleisli(toBlobstorePaths[F](_).pure[F])
 
 
-    def mkListBlobsOptions(
+  def mkListBlobsOptions(
       details: Option[BlobListingDetails],
       maxResults: Option[Integer],
       prefix: Option[PrefixPath])
