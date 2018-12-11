@@ -17,37 +17,35 @@
 package quasar.blobstore.azure
 
 import quasar.blobstore.azure.requests.BlobPropsArgs
-import quasar.blobstore.{Converter, ops}
 import quasar.blobstore.services.PropsService
 
+import cats.data.Kleisli
 import cats.effect.Async
-import cats.syntax.functor._
+import cats.syntax.applicative._
 import com.microsoft.azure.storage.blob.{BlobAccessConditions, BlobURL}
 import com.microsoft.azure.storage.blob.models.BlobGetPropertiesResponse
 import com.microsoft.rest.v2.Context
 
-class AzurePropsService[F[_]: Async, P, R](
-    mkArgs: BlobURL => BlobPropsArgs,
-    handler: F[R] => F[R])(
-    implicit CP: Converter[F, P, BlobURL], CR: Converter[F, BlobGetPropertiesResponse, R])
-  extends PropsService[F, P, R] {
-
-  override def props(path: P): F[R] =
-    ops.service[F, P, BlobPropsArgs, BlobGetPropertiesResponse, R, F[R]](
-      CP.convert(_).map(mkArgs),
-      requests.blobPropsRequest[F],
-      CR.convert(_),
-      handler
-    ).apply(path)
-
-}
-
 object AzurePropsService {
-  def apply[
-      F[_]: Async, P: Converter[F, ?, BlobURL],
-      R: Converter[F, BlobGetPropertiesResponse, ?]](
-      handler: F[R] => F[R]): AzurePropsService[F, P, R] =
-    new AzurePropsService[F, P, R](
+  def apply[F[_]: Async, P, R](
+      toBlobUrl: Kleisli[F, P, BlobURL],
+      toResponse: Kleisli[F, BlobGetPropertiesResponse, R],
+      mkArgs: BlobURL => BlobPropsArgs,
+      handler: F[R] => F[R])
+      : PropsService[F, P, R] =
+    toBlobUrl andThen
+      Kleisli[F, BlobURL, BlobPropsArgs](mkArgs(_).pure[F]) andThen
+      requests.blobPropsRequestK andThen
+      toResponse mapF
+      handler
+
+  def mk[F[_]: Async, P, R](
+      toBlobUrl: Kleisli[F, P, BlobURL],
+      toResponse: Kleisli[F, BlobGetPropertiesResponse, R],
+      handler: F[R] => F[R]): PropsService[F, P, R] =
+    AzurePropsService[F, P, R](
+      toBlobUrl,
+      toResponse,
       BlobPropsArgs(_, BlobAccessConditions.NONE, Context.NONE),
       handler)
 }

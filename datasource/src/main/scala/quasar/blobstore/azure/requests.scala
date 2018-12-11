@@ -40,6 +40,9 @@ object requests {
     Sync[F].delay(args.blobURL.getProperties(args.blobAccessConditions, args.context)) >>=
       rx.singleToAsync[F, BlobGetPropertiesResponse]
 
+  def blobPropsRequestK[F[_]: Async]: Kleisli[F, BlobPropsArgs, BlobGetPropertiesResponse] =
+    Kleisli(blobPropsRequest[F])
+
   final case class DownloadArgs(blobURL: BlobURL, blobRange: BlobRange, blobAccessConditions: BlobAccessConditions, rangeGetContentMD5: Boolean, context: Context)
 
   def downloadRequest[F[_]: Async](args: DownloadArgs): F[DownloadResponse] =

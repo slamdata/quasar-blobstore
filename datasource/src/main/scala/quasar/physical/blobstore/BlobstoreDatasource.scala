@@ -22,7 +22,7 @@ import quasar.api.resource.{ResourceName, ResourcePath, ResourcePathType}
 import quasar.blobstore.{BlobstoreStatus, Converter}
 import quasar.connector._
 import ParsableType.JsonVariant
-import quasar.blobstore.services.GetService
+import quasar.blobstore.services.{GetService, PropsService}
 import quasar.connector.datasource.LightweightDatasource
 import quasar.contrib.scalaz.MonadError_
 
@@ -39,21 +39,20 @@ class BlobstoreDatasource[F[_]: Monad: MonadResourceErr: RaiseThrowable, BP, PP]
   resourcePathToBlobPath: Kleisli[F, ResourcePath, BP],
   blobstoreStatus: F[BlobstoreStatus],
   list: PP => F[Option[Stream[F, (ResourceName, ResourcePathType)]]]  ,
-  isResource: BP => F[Boolean],
+  isResourceService: PropsService[F, BP, Boolean],
   getService: GetService[F, BP])(
-  implicit CBP: Converter[F, ResourcePath, BP],
-  CPP: Converter[F, ResourcePath, PP])
+  implicit CPP: Converter[F, ResourcePath, PP])
   extends LightweightDatasource[F, Stream[F, ?], QueryResult[F]] {
 
   override def evaluate(path: ResourcePath): F[QueryResult[F]] =
-  for {
-    blobPath <- resourcePathToBlobPath(path)
-    bytes <- getService(blobPath)
-    qr = QueryResult.typed[F](ParsableType.json(jvar, false), bytes)
-  } yield qr
+    for {
+      blobPath <- resourcePathToBlobPath(path)
+      bytes <- getService(blobPath)
+      qr = QueryResult.typed[F](ParsableType.json(jvar, false), bytes)
+    } yield qr
 
   override def pathIsResource(path: ResourcePath): F[Boolean] =
-    CBP.convert(path).flatMap(isResource(_))
+    (resourcePathToBlobPath andThen isResourceService).apply(path)
 
   override def prefixedChildPaths(prefixPath: ResourcePath)
       : F[Option[Stream[F, (ResourceName, ResourcePathType)]]] =
