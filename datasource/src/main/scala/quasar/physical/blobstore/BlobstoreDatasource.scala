@@ -19,10 +19,10 @@ package quasar.physical.blobstore
 import slamdata.Predef._
 import quasar.api.datasource.DatasourceType
 import quasar.api.resource.{ResourceName, ResourcePath, ResourcePathType}
-import quasar.blobstore.{BlobstoreStatus, Converter}
+import quasar.blobstore.BlobstoreStatus
 import quasar.connector._
 import ParsableType.JsonVariant
-import quasar.blobstore.services.{GetService, PropsService}
+import quasar.blobstore.services.{GetService, ListService, PropsService}
 import quasar.connector.datasource.LightweightDatasource
 import quasar.contrib.scalaz.MonadError_
 
@@ -37,11 +37,11 @@ class BlobstoreDatasource[F[_]: Monad: MonadResourceErr: RaiseThrowable, BP, PP]
   val kind: DatasourceType,
   jvar: JsonVariant,
   resourcePathToBlobPath: Kleisli[F, ResourcePath, BP],
+  resourcePathToPrefixPath: Kleisli[F, ResourcePath, PP],
   blobstoreStatus: F[BlobstoreStatus],
-  list: PP => F[Option[Stream[F, (ResourceName, ResourcePathType)]]]  ,
+  listService: ListService[F, PP, (ResourceName, ResourcePathType)],
   isResourceService: PropsService[F, BP, Boolean],
-  getService: GetService[F, BP])(
-  implicit CPP: Converter[F, ResourcePath, PP])
+  getService: GetService[F, BP])
   extends LightweightDatasource[F, Stream[F, ?], QueryResult[F]] {
 
   override def evaluate(path: ResourcePath): F[QueryResult[F]] =
@@ -56,7 +56,7 @@ class BlobstoreDatasource[F[_]: Monad: MonadResourceErr: RaiseThrowable, BP, PP]
 
   override def prefixedChildPaths(prefixPath: ResourcePath)
       : F[Option[Stream[F, (ResourceName, ResourcePathType)]]] =
-    CPP.convert(prefixPath).flatMap(list(_))
+    (resourcePathToPrefixPath andThen listService).apply(prefixPath)
 
   def asDsType: Datasource[F, Stream[F, ?], ResourcePath, QueryResult[F]] = this
 

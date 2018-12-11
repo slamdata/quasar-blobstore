@@ -17,7 +17,6 @@
 package quasar.blobstore.azure
 
 import slamdata.Predef._
-import quasar.blobstore.Converter
 import quasar.blobstore.paths._
 
 import java.lang.Integer
@@ -26,6 +25,7 @@ import cats.Applicative
 import cats.data.Kleisli
 import cats.effect.Sync
 import cats.instances.string._
+import cats.syntax.applicative._
 import cats.syntax.eq._
 import com.microsoft.azure.storage.blob.models.{BlobItem, BlobPrefix, ContainerListBlobHierarchySegmentResponse}
 import com.microsoft.azure.storage.blob.{BlobListingDetails, BlobURL, ContainerURL, ListBlobsOptions}
@@ -34,13 +34,18 @@ import fs2.Stream
 object converters {
 
   def blobPathToBlobURLK[F[_]: Sync](containerURL: ContainerURL): Kleisli[F, BlobPath, BlobURL] =
-    Kleisli[F, BlobPath, BlobURL](mkBlobUrl[F](containerURL))
+    Kleisli(mkBlobUrl[F](containerURL))
 
-  def prefixPathToListBlobOptions[F[_]: Applicative](details: Option[BlobListingDetails], maxResults: Option[Integer])
-      : Converter[F, PrefixPath, ListBlobsOptions] =
-    Converter.pure[F, PrefixPath, ListBlobsOptions](p => mkListBlobsOptions(details, maxResults, Some(p)))
+  def prefixPathToListBlobOptionsK[F[_]: Applicative](details: Option[BlobListingDetails], maxResults: Option[Integer])
+      : Kleisli[F, PrefixPath, ListBlobsOptions] =
+    Kleisli(p => mkListBlobsOptions(details, maxResults, Some(p)).pure[F])
 
-  def mkListBlobsOptions(
+  def toBlobstorePathsK[F[_]: Applicative]
+      : Kleisli[F, ContainerListBlobHierarchySegmentResponse, Option[Stream[F, BlobstorePath]]] =
+    Kleisli(toBlobstorePaths[F](_).pure[F])
+
+
+    def mkListBlobsOptions(
       details: Option[BlobListingDetails],
       maxResults: Option[Integer],
       prefix: Option[PrefixPath])

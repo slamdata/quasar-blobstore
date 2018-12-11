@@ -34,6 +34,9 @@ object requests {
     Sync[F].delay(args.containerURL.listBlobsHierarchySegment(args.marker.orNull, args.delimiter, args.options, args.context)) >>=
       rx.singleToAsync[F, ContainerListBlobHierarchySegmentResponse]
 
+  def listRequestK[F[_]: Async]: Kleisli[F, ListBlobHierarchyArgs, ContainerListBlobHierarchySegmentResponse] =
+    Kleisli(listRequest[F])
+
   final case class BlobPropsArgs(blobURL: BlobURL, blobAccessConditions: BlobAccessConditions, context: Context)
 
   def blobPropsRequest[F[_]: Async](args: BlobPropsArgs): F[BlobGetPropertiesResponse] =

@@ -18,7 +18,6 @@ package quasar.physical.blobstore
 
 import slamdata.Predef._
 import quasar.api.resource.{ResourceName, ResourcePath, ResourcePathType}
-import quasar.blobstore.Converter
 import quasar.blobstore.paths._
 
 import cats.Applicative
@@ -28,14 +27,11 @@ import scalaz.IList
 
 object converters {
 
-  implicit def resourcePathToBlobPath[F[_]: Applicative]: Converter[F, ResourcePath, BlobPath] =
-    Converter.pure[F, ResourcePath, BlobPath](toBlobPath)
+  def resourcePathToBlobPathK[F[_]: Applicative]: Kleisli[F, ResourcePath, BlobPath] =
+    Kleisli(toBlobPath(_).pure[F])
 
-  implicit def resourcePathToBlobPathK[F[_]: Applicative]: Kleisli[F, ResourcePath, BlobPath] =
-    Kleisli[F, ResourcePath, BlobPath](toBlobPath(_).pure[F])
-
-  implicit def resourcePathToPrefixPath[F[_]: Applicative]: Converter[F, ResourcePath, PrefixPath] =
-    Converter.pure[F, ResourcePath, PrefixPath](toPrefixPath)
+  def resourcePathToPrefixPathK[F[_]: Applicative]: Kleisli[F, ResourcePath, PrefixPath] =
+    Kleisli(toPrefixPath(_).pure[F])
 
   def toPrefixPath(path: ResourcePath): PrefixPath =
     PrefixPath(toPath(path))

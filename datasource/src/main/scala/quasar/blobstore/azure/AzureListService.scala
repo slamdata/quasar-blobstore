@@ -18,37 +18,34 @@ package quasar.blobstore.azure
 
 import slamdata.Predef._
 import quasar.blobstore.azure.requests.ListBlobHierarchyArgs
-import quasar.blobstore.{Converter, ops}
 import quasar.blobstore.services.ListService
 
+import cats.data.Kleisli
 import cats.effect.Async
-import cats.syntax.functor._
 import com.microsoft.azure.storage.blob.{ContainerURL, ListBlobsOptions}
 import com.microsoft.azure.storage.blob.models.ContainerListBlobHierarchySegmentResponse
 import com.microsoft.rest.v2.Context
 import fs2.Stream
 
-class AzureListService[F[_]: Async, P, R](
-    mkArgs: ListBlobsOptions => ListBlobHierarchyArgs,
-    handler: F[Option[Stream[F, R]]] => F[Option[Stream[F, R]]])(
-    implicit CP: Converter[F, P, ListBlobsOptions], CR: Converter[F, (ContainerListBlobHierarchySegmentResponse, P), Option[Stream[F, R]]])
-  extends ListService[F, P, R] {
-
-  override def list(path: P): F[Option[Stream[F, R]]] =
-    ops.service[F, P, ListBlobHierarchyArgs, ContainerListBlobHierarchySegmentResponse, Option[Stream[F, R]], F[Option[Stream[F, R]]]](
-      CP.convert(_).map(mkArgs),
-      requests.listRequest[F],
-      res => CR.convert((res, path)),
-      handler
-    ).apply(path)
-}
-
 object AzureListService {
-  def apply[F[_]: Async, P: Converter[F, ?, ListBlobsOptions], R: λ[A => Converter[F, (ContainerListBlobHierarchySegmentResponse, P), Option[Stream[F, A]]]]](
-    containerURL: ContainerURL,
-    handler: F[Option[Stream[F, R]]] => F[Option[Stream[F, R]]]): AzureListService[F, P, R] =
-    new AzureListService[F, P, R](
+  def apply[F[_]: Async, P, R](
+      toListBlobsOption: Kleisli[F, P, ListBlobsOptions],
+      toResponse: Kleisli[F, ContainerListBlobHierarchySegmentResponse, Option[Stream[F, R]]],
+      mkArgs: ListBlobsOptions => ListBlobHierarchyArgs,
+      handler: F[Option[Stream[F, R]]] => F[Option[Stream[F, R]]])
+      : ListService[F, P, R] =
+    toListBlobsOption map mkArgs andThen requests.listRequestK andThen toResponse mapF handler
+
+
+  def mk[F[_]: Async, P, R](
+      toListBlobsOptions: Kleisli[F, P, ListBlobsOptions],
+      toResponse: Kleisli[F, ContainerListBlobHierarchySegmentResponse, Option[Stream[F, R]]],
+      containerURL: ContainerURL,
+      handler: F[Option[Stream[F, R]]] => F[Option[Stream[F, R]]])
+      : ListService[F, P, R] =
+    AzureListService[F, P, R](
+      toListBlobsOptions,
+      toResponse,
       ListBlobHierarchyArgs(containerURL, None, "/", _, Context.NONE),
-      handler
-    )
+      handler)
 }

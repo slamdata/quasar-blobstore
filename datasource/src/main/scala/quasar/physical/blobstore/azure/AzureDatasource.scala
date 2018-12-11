@@ -21,36 +21,33 @@ package azure
 import slamdata.Predef._
 import quasar.api.datasource.DatasourceType
 import quasar.api.resource.{ResourceName, ResourcePath, ResourcePathType}
-import quasar.blobstore.{BlobstoreStatus, Converter, ResourceType}
+import quasar.blobstore.{BlobstoreStatus, ResourceType}
 import quasar.blobstore.azure.{converters => azureConverters, _}
 import quasar.blobstore.paths.{BlobPath, BlobstorePath, PrefixPath}
-import quasar.blobstore.services.{GetService, PropsService}
+import quasar.blobstore.services.{GetService, ListService, PropsService}
 import quasar.connector.{MonadResourceErr, ResourceError}
 import quasar.connector.ParsableType.JsonVariant
-import quasar.physical.blobstore.converters
 
 import java.lang.Integer
 
 import cats.Monad
 import cats.data.Kleisli
 import cats.effect.{Async, ConcurrentEffect}
-import cats.instances.function._
 import cats.instances.int._
 import cats.syntax.applicative._
 import cats.syntax.applicativeError._
 import cats.syntax.eq._
 import cats.syntax.functor._
-import com.microsoft.azure.storage.blob.{BlobURL, ContainerURL, ListBlobsOptions, StorageException}
-import com.microsoft.azure.storage.blob.models.ContainerListBlobHierarchySegmentResponse
+import com.microsoft.azure.storage.blob.{BlobURL, ContainerURL, StorageException}
 import eu.timepit.refined.auto._
 import fs2.{RaiseThrowable, Stream}
 
 class AzureDatasource[
-  F[_]: Monad: MonadResourceErr: RaiseThrowable, BP,
-  PP: Converter[F, ResourcePath, ?]](
+  F[_]: Monad: MonadResourceErr: RaiseThrowable, BP, PP](
   resourcePathToBlobPath: Kleisli[F, ResourcePath, BP],
+  resourcePathToPrefixPath: Kleisli[F, ResourcePath, PP],
   status: F[BlobstoreStatus],
-  prefixPathList: PP => F[Option[Stream[F, (ResourceName, ResourcePathType)]]],
+  prefixPathList: ListService[F, PP, (ResourceName, ResourcePathType)],
   blobPathIsValid: PropsService[F, BP, Boolean],
   blobPathGet: GetService[F, BP],
   jsonVariant: JsonVariant)
@@ -58,6 +55,7 @@ class AzureDatasource[
     AzureDatasource.dsType,
     jsonVariant,
     resourcePathToBlobPath,
+    resourcePathToPrefixPath,
     status,
     prefixPathList,
     blobPathIsValid,
@@ -84,25 +82,23 @@ object AzureDatasource {
       : GetService[F, BlobPath] =
     AzureGetService.mk[F, BlobPath](toBlobUrl, maxQueueSize, errorHandler[F, Byte])
 
-  private def list[F[_]: Async](containerURL: ContainerURL): PrefixPath => F[Option[Stream[F, BlobstorePath]]] = {
-    implicit val CP: Converter[F, PrefixPath, ListBlobsOptions] =
-      azureConverters.prefixPathToListBlobOptions(details = None, maxResults = Some(Integer.valueOf(5000)))
-
-    implicit val CR: Converter[F, (ContainerListBlobHierarchySegmentResponse, PrefixPath), Option[Stream[F, BlobstorePath]]] =
-      Converter.pure(pair => azureConverters.toBlobstorePaths(pair._1))
-
-    AzureListService[F, PrefixPath, BlobstorePath](containerURL, x => x).list
+  private def list[F[_]: Async](containerURL: ContainerURL): ListService[F, PrefixPath, BlobstorePath] = {
+    AzureListService.mk[F, PrefixPath, BlobstorePath](
+      azureConverters.prefixPathToListBlobOptionsK(details = None, maxResults = Some(Integer.valueOf(5000))),
+      azureConverters.toBlobstorePathsK,
+      containerURL,
+      x => x)
   }
 
   def mk[F[_]: ConcurrentEffect: MonadResourceErr](cfg: AzureConfig): F[AzureDatasource[F, BlobPath, PrefixPath]] =
     Azure.mkContainerUrl[F](cfg) map {c =>
-      import converters._
       val blobPathToBlobURLK = azureConverters.blobPathToBlobURLK(c)
 
       new AzureDatasource[F, BlobPath, PrefixPath](
         converters.resourcePathToBlobPathK[F],
+        converters.resourcePathToPrefixPathK[F],
         AzureStatusService(c).status,
-        list(c).map(_.map(_.map(_.map(converters.toResourceNameType)))),
+        list(c).map(_.map(_.map(converters.toResourceNameType))),
         isResource[F](blobPathToBlobURLK),
         get[F](blobPathToBlobURLK, cfg.maxQueueSize.getOrElse(MaxQueueSize.default)),
         toJsonVariant(cfg.resourceType))

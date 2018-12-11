@@ -31,7 +31,6 @@ object services {
 
   type PropsService[F[_], P, R] = Kleisli[F, P, R]
 
-  trait ListService[F[_], P, R] {
-    def list(path: P): F[Option[Stream[F, R]]]
-  }
+  type ListService[F[_], P, R] = Kleisli[F, P, Option[Stream[F, R]]]
+
 }
