@@ -23,6 +23,7 @@ import quasar.blobstore.paths._
 import java.lang.Integer
 
 import cats.Applicative
+import cats.data.Kleisli
 import cats.effect.Sync
 import cats.instances.string._
 import cats.syntax.eq._
@@ -31,6 +32,9 @@ import com.microsoft.azure.storage.blob.{BlobListingDetails, BlobURL, ContainerU
 import fs2.Stream
 
 object converters {
+
+  def blobPathToBlobURLK[F[_]: Sync](containerURL: ContainerURL): Kleisli[F, BlobPath, BlobURL] =
+    Kleisli[F, BlobPath, BlobURL](mkBlobUrl[F](containerURL))
 
   def blobPathToBlobURL[F[_]: Sync](containerURL: ContainerURL): Converter[F, BlobPath, BlobURL] =
     Converter[F, BlobPath, BlobURL](mkBlobUrl[F](containerURL))

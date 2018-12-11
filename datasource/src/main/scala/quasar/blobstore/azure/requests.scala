@@ -18,6 +18,7 @@ package quasar.blobstore.azure
 
 import slamdata.Predef._
 
+import cats.data.Kleisli
 import cats.effect.{Async, Sync}
 import cats.syntax.flatMap._
 import com.microsoft.azure.storage.blob._
@@ -44,6 +45,9 @@ object requests {
   def downloadRequest[F[_]: Async](args: DownloadArgs): F[DownloadResponse] =
     Sync[F].delay(args.blobURL.download(args.blobRange, args.blobAccessConditions, args.rangeGetContentMD5, args.context)) >>=
       rx.singleToAsync[F, DownloadResponse]
+
+  def downloadRequestK[F[_]: Async]: Kleisli[F, DownloadArgs, DownloadResponse] =
+    Kleisli(downloadRequest[F])
 
   final case class ContainerPropsArgs(containerURL: ContainerURL, leaseAccessConditions: LeaseAccessConditions, context: Context)
 

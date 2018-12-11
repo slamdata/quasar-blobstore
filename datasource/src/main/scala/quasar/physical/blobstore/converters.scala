@@ -22,12 +22,17 @@ import quasar.blobstore.Converter
 import quasar.blobstore.paths._
 
 import cats.Applicative
+import cats.data.Kleisli
+import cats.syntax.applicative._
 import scalaz.IList
 
 object converters {
 
   implicit def resourcePathToBlobPath[F[_]: Applicative]: Converter[F, ResourcePath, BlobPath] =
     Converter.pure[F, ResourcePath, BlobPath](toBlobPath)
+
+  implicit def resourcePathToBlobPathK[F[_]: Applicative]: Kleisli[F, ResourcePath, BlobPath] =
+    Kleisli[F, ResourcePath, BlobPath](toBlobPath(_).pure[F])
 
   implicit def resourcePathToPrefixPath[F[_]: Applicative]: Converter[F, ResourcePath, PrefixPath] =
     Converter.pure[F, ResourcePath, PrefixPath](toPrefixPath)

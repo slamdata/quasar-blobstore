@@ -22,6 +22,7 @@ import quasar.blobstore.BlobstoreStatus
 import scala.util.control.NonFatal
 
 import cats.ApplicativeError
+import cats.data.Kleisli
 import cats.effect.ConcurrentEffect
 import cats.instances.int._
 import cats.syntax.applicativeError._
@@ -47,5 +48,8 @@ object handlers {
         b <- Stream.chunk(Chunk.byteBuffer(buf))
       } yield b
     }
+
+  def toByteStreamK[F[_]: ConcurrentEffect](reliableDownloadOptions: ReliableDownloadOptions, maxQueueSize: MaxQueueSize): Kleisli[F, DownloadResponse, Stream[F, Byte]] =
+    Kleisli(toByteStream[F](reliableDownloadOptions, maxQueueSize))
 
 }

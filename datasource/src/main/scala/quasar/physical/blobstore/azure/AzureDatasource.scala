@@ -24,12 +24,15 @@ import quasar.api.resource.{ResourceName, ResourcePath, ResourcePathType}
 import quasar.blobstore.{BlobstoreStatus, Converter, ResourceType}
 import quasar.blobstore.azure.{converters => azureConverters, _}
 import quasar.blobstore.paths.{BlobPath, BlobstorePath, PrefixPath}
+import quasar.blobstore.services.GetService
 import quasar.connector.{MonadResourceErr, ResourceError}
 import quasar.connector.ParsableType.JsonVariant
+import quasar.physical.blobstore.converters
 
 import java.lang.Integer
 
 import cats.Monad
+import cats.data.Kleisli
 import cats.effect.{Async, ConcurrentEffect}
 import cats.instances.function._
 import cats.instances.int._
@@ -45,14 +48,16 @@ class AzureDatasource[
   F[_]: Monad: MonadResourceErr: RaiseThrowable,
   BP: Converter[F, ResourcePath, ?],
   PP: Converter[F, ResourcePath, ?]](
+  resourcePathToBlobPath: Kleisli[F, ResourcePath, BP],
   status: F[BlobstoreStatus],
   prefixPathList: PP => F[Option[Stream[F, (ResourceName, ResourcePathType)]]],
   blobPathIsValid: BP => F[Boolean],
-  blobPathGet: BP => Stream[F, Byte],
+  blobPathGet: GetService[F, BP],
   jsonVariant: JsonVariant)
   extends BlobstoreDatasource[F, BP, PP](
     AzureDatasource.dsType,
     jsonVariant,
+    resourcePathToBlobPath,
     status,
     prefixPathList,
     blobPathIsValid,
@@ -72,10 +77,10 @@ object AzureDatasource {
   }
 
   private def get[F[_]: ConcurrentEffect](
-    maxQueueSize: MaxQueueSize)(
-    implicit CP: Converter[F, BlobPath, BlobURL])
-      : BlobPath => Stream[F, Byte] =
-    AzureGetService[F, BlobPath](maxQueueSize, errorHandler[F, Byte]).get
+    toBlobUrl: Kleisli[F, BlobPath, BlobURL],
+    maxQueueSize: MaxQueueSize)
+      : GetService[F, BlobPath] =
+    AzureGetService.mk[F, BlobPath](toBlobUrl, maxQueueSize, errorHandler[F, Byte])
 
   private def list[F[_]: Async](containerURL: ContainerURL): PrefixPath => F[Option[Stream[F, BlobstorePath]]] = {
     implicit val CP: Converter[F, PrefixPath, ListBlobsOptions] =
@@ -91,12 +96,14 @@ object AzureDatasource {
     Azure.mkContainerUrl[F](cfg) map {c =>
       import converters._
       implicit val CBP = azureConverters.blobPathToBlobURL(c)
+      val blobPathToBlobURLK = azureConverters.blobPathToBlobURLK(c)
 
       new AzureDatasource[F, BlobPath, PrefixPath](
+        converters.resourcePathToBlobPathK[F],
         AzureStatusService(c).status,
         list(c).map(_.map(_.map(_.map(converters.toResourceNameType)))),
         isResource[F],
-        get[F](cfg.maxQueueSize.getOrElse(MaxQueueSize.default)),
+        get[F](blobPathToBlobURLK, cfg.maxQueueSize.getOrElse(MaxQueueSize.default)),
         toJsonVariant(cfg.resourceType))
     }
 

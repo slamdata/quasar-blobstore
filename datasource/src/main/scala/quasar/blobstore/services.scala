@@ -18,6 +18,7 @@ package quasar.blobstore
 
 import slamdata.Predef._
 
+import cats.data.Kleisli
 import fs2.Stream
 
 object services {
@@ -26,9 +27,7 @@ object services {
     def status: F[S]
   }
 
-  trait GetService[F[_], P] {
-    def get(path: P): Stream[F, Byte]
-  }
+  type GetService[F[_], P] = Kleisli[F, P, Stream[F, Byte]]
 
   trait PropsService[F[_], P, R] {
     def props(path: P): F[R]

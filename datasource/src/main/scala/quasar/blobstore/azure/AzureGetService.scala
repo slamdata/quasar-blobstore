@@ -17,40 +17,43 @@
 package quasar.blobstore.azure
 
 import slamdata.Predef._
-import quasar.blobstore.{Converter, ops}
 import quasar.blobstore.azure.requests.DownloadArgs
 import quasar.blobstore.services.GetService
 
+import cats.data.Kleisli
 import cats.effect.ConcurrentEffect
-import cats.syntax.functor._
+import cats.syntax.applicative._
 import com.microsoft.azure.storage.blob._
 import com.microsoft.rest.v2.Context
 import fs2.Stream
 
-class AzureGetService[F[_]: ConcurrentEffect, P](
-    mkArgs: BlobURL => DownloadArgs,
-    reliableDownloadOptions: ReliableDownloadOptions,
-    maxQueueSize: MaxQueueSize,
-    errorHandler: P => Throwable => Stream[F, Byte])(
-    implicit CP: Converter[F, P, BlobURL])
-  extends GetService[F, P] {
-
-  override def get(path: P): Stream[F, Byte] =
-    ops.service[F, P, DownloadArgs, DownloadResponse, Stream[F, Byte], Stream[F, Byte]](
-      CP.convert(_).map(mkArgs),
-      requests.downloadRequest[F],
-      handlers.toByteStream(reliableDownloadOptions, maxQueueSize),
-      Stream.force(_).handleErrorWith(errorHandler(path))
-    ).apply(path)
-
-}
-
 object AzureGetService {
-  def apply[F[_]: ConcurrentEffect, P: Converter[F, ?, BlobURL]](
+
+  def apply[F[_]: ConcurrentEffect, P](
+      toBlobUrl: Kleisli[F, P, BlobURL],
+      mkArgs: BlobURL => DownloadArgs,
+      reliableDownloadOptions: ReliableDownloadOptions,
+      maxQueueSize: MaxQueueSize,
+      errorHandler: P => Throwable => Stream[F, Byte])
+      : GetService[F, P] = {
+
+    val getSvc = toBlobUrl andThen
+      Kleisli[F, BlobURL, DownloadArgs](u => mkArgs(u).pure[F]) andThen
+      requests.downloadRequestK andThen
+      handlers.toByteStreamK(reliableDownloadOptions, maxQueueSize)
+
+    Kleisli[F, P, Stream[F, Byte]] { p =>
+      Stream.force(getSvc(p)).handleErrorWith(errorHandler(p)).pure[F]
+    }
+  }
+
+  def mk[F[_]: ConcurrentEffect, P](
+    toBlobUrl: Kleisli[F, P, BlobURL],
     maxQueueSize: MaxQueueSize,
     errorHandler: P => Throwable => Stream[F, Byte])
-      : AzureGetService[F, P] =
-    new AzureGetService[F, P](
+      : GetService[F, P] =
+    AzureGetService[F, P](
+      toBlobUrl,
       url => DownloadArgs(url, BlobRange.DEFAULT, BlobAccessConditions.NONE, false, Context.NONE),
       new ReliableDownloadOptions,
       maxQueueSize,
