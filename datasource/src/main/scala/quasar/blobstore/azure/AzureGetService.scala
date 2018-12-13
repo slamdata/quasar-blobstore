@@ -29,33 +29,31 @@ import fs2.Stream
 
 object AzureGetService {
 
-  def apply[F[_]: ConcurrentEffect, P](
-      toBlobUrl: Kleisli[F, P, BlobURL],
+  def apply[F[_]: ConcurrentEffect](
       mkArgs: BlobURL => DownloadArgs,
       reliableDownloadOptions: ReliableDownloadOptions,
-      maxQueueSize: MaxQueueSize,
+      maxQueueSize: MaxQueueSize)
+      : GetService[F, BlobURL] =
+    Kleisli[F, BlobURL, DownloadArgs](mkArgs(_).pure[F]) andThen
+      requests.downloadRequestK andThen
+      handlers.toByteStreamK(reliableDownloadOptions, maxQueueSize)
+
+  def mk[F[_]: ConcurrentEffect](maxQueueSize: MaxQueueSize): GetService[F, BlobURL] =
+    AzureGetService(
+      DownloadArgs(_, BlobRange.DEFAULT, BlobAccessConditions.NONE, false, Context.NONE),
+      new ReliableDownloadOptions,
+      maxQueueSize)
+
+  def withErrorHandler[F[_]: ConcurrentEffect, P](
+      service: GetService[F, BlobURL],
+      toBlobUrl: Kleisli[F, P, BlobURL],
       errorHandler: P => Throwable => Stream[F, Byte])
       : GetService[F, P] = {
 
-    val getSvc = toBlobUrl map
-      mkArgs andThen
-      requests.downloadRequestK andThen
-      handlers.toByteStreamK(reliableDownloadOptions, maxQueueSize)
+    val getSvc = toBlobUrl andThen service
 
     Kleisli[F, P, Stream[F, Byte]] { p =>
       Stream.force(getSvc(p)).handleErrorWith(errorHandler(p)).pure[F]
     }
   }
-
-  def mk[F[_]: ConcurrentEffect, P](
-    toBlobUrl: Kleisli[F, P, BlobURL],
-    maxQueueSize: MaxQueueSize,
-    errorHandler: P => Throwable => Stream[F, Byte])
-      : GetService[F, P] =
-    AzureGetService[F, P](
-      toBlobUrl,
-      url => DownloadArgs(url, BlobRange.DEFAULT, BlobAccessConditions.NONE, false, Context.NONE),
-      new ReliableDownloadOptions,
-      maxQueueSize,
-      errorHandler)
 }

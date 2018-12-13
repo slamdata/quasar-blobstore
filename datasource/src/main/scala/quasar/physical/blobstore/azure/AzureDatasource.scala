@@ -90,9 +90,9 @@ object AzureDatasource {
           blobPathToBlobURLK,
           Kleisli(_ => true.pure[F]),
           _.recover { case _: StorageException => false }),
-        AzureGetService.mk[F, BlobPath](
+        AzureGetService.withErrorHandler[F, BlobPath](
+          AzureGetService.mk(cfg.maxQueueSize.getOrElse(MaxQueueSize.default)),
           blobPathToBlobURLK,
-          cfg.maxQueueSize.getOrElse(MaxQueueSize.default),
           errorHandler[F, Byte]),
         toJsonVariant(cfg.resourceType))
     }
