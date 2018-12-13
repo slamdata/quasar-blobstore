@@ -64,9 +64,9 @@ class AzureDatasource[
 object AzureDatasource {
   val dsType: DatasourceType = DatasourceType("azure", 1L)
 
-  private def errorHandler[F[_]: RaiseThrowable, A](path: BlobPath): Throwable => Stream[F, A] = {
+  private def errorHandler[F[_]: MonadResourceErr: RaiseThrowable, A](path: BlobPath): Throwable => Stream[F, A] = {
     case ex: StorageException if ex.statusCode() === 404 =>
-      Stream.raiseError(ResourceError.throwableP(ResourceError.pathNotFound(converters.blobPathToResourcePath(path))))
+      Stream.eval(MonadResourceErr.raiseError(ResourceError.pathNotFound(converters.blobPathToResourcePath(path))))
     case ex =>
       Stream.raiseError(ex)
   }
