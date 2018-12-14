@@ -20,11 +20,10 @@ import slamdata.Predef._
 import quasar.Disposable
 import quasar.api.datasource.DatasourceError.InitializationError
 import quasar.api.datasource.{DatasourceError, DatasourceType}
-import quasar.api.resource.ResourcePath
 import quasar.blobstore.azure._
 import json._
 import quasar.blobstore.BlobstoreStatus
-import quasar.connector.{Datasource, LightweightDatasourceModule, MonadResourceErr, QueryResult}
+import quasar.connector.{LightweightDatasourceModule, MonadResourceErr}
 
 import java.net.{MalformedURLException, UnknownHostException}
 import scala.concurrent.ExecutionContext
@@ -37,7 +36,6 @@ import cats.effect.{ConcurrentEffect, ContextShift, Timer}
 import cats.syntax.applicative._
 import cats.syntax.flatMap._
 import cats.syntax.functor._
-import fs2.Stream
 import scalaz.{NonEmptyList, \/}
 import scalaz.syntax.either._
 import scalaz.syntax.equal._
@@ -55,7 +53,7 @@ object AzureDatasourceModule extends LightweightDatasourceModule {
   override def lightweightDatasource[F[_]: ConcurrentEffect: ContextShift: MonadResourceErr: Timer](
       json: Json)(
       implicit ec: ExecutionContext)
-      : F[InitializationError[Json] \/ Disposable[F, Datasource[F, Stream[F, ?], ResourcePath, QueryResult[F]]]] =
+      : F[InitializationError[Json] \/ Disposable[F, DS[F]]] =
     json.as[AzureConfig].result match {
       case Right(cfg) =>
         val r = for {

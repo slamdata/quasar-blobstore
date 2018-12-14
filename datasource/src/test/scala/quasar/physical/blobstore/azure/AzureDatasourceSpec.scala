@@ -21,6 +21,7 @@ import quasar.api.resource.ResourcePath
 import quasar.blobstore.azure._
 import quasar.connector.{Datasource, QueryResult}
 import quasar.physical.blobstore.{BlobstoreDatasource, BlobstoreDatasourceSpec}
+import quasar.qscript.InterpretedRead
 import BlobstoreDatasource._
 
 import cats.effect.IO
@@ -30,6 +31,6 @@ abstract class AzureDatasourceSpec extends BlobstoreDatasourceSpec[IO] {
 
   val cfg: AzureConfig
 
-  override def datasource: IO[Datasource[IO, Stream[IO, ?], ResourcePath, QueryResult[IO]]] =
+  override def datasource: IO[Datasource[IO, Stream[IO, ?], InterpretedRead[ResourcePath], QueryResult[IO]]] =
     AzureDatasource.mk[IO](cfg)
 }

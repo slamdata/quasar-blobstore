@@ -24,6 +24,7 @@ import quasar.connector._
 import ParsableType.JsonVariant
 import quasar.connector.datasource.LightweightDatasource
 import quasar.contrib.scalaz.MonadError_
+import quasar.qscript.InterpretedRead
 
 import cats.Applicative
 import cats.effect.IO
@@ -36,9 +37,10 @@ class BlobstoreDatasource[F[_]: Applicative: MonadResourceErr: RaiseThrowable](
   blobstore: Blobstore[F])
   extends LightweightDatasource[F, Stream[F, ?], QueryResult[F]] {
 
-  override def evaluate(path: ResourcePath): F[QueryResult[F]] = {
+  override def evaluate(iRead: InterpretedRead[ResourcePath]): F[QueryResult[F]] = {
+    val path = iRead.path
     val bytes = blobstore.get(path)
-    val qr: QueryResult[F] = QueryResult.typed[F](ParsableType.json(jvar, false), bytes)
+    val qr: QueryResult[F] = QueryResult.typed[F](ParsableType.json(jvar, false), bytes, iRead.instructions)
     qr.pure[F]
   }
 
@@ -49,7 +51,7 @@ class BlobstoreDatasource[F[_]: Applicative: MonadResourceErr: RaiseThrowable](
       : F[Option[Stream[F, (ResourceName, ResourcePathType)]]] =
     blobstore.list(prefixPath)
 
-  def asDsType: Datasource[F, Stream[F, ?], ResourcePath, QueryResult[F]] = this
+  def asDsType: Datasource[F, Stream[F, ?], InterpretedRead[ResourcePath], QueryResult[F]] = this
 
   def status: F[BlobstoreStatus] = blobstore.status
 }

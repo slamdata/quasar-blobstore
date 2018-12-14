@@ -20,6 +20,7 @@ import slamdata.Predef._
 import quasar.EffectfulQSpec
 import quasar.api.resource.{ResourceName, ResourcePath, ResourcePathType}
 import quasar.connector.{Datasource, QueryResult, ResourceError}
+import quasar.qscript.InterpretedRead
 
 import java.nio.charset.StandardCharsets
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -37,7 +38,7 @@ abstract class BlobstoreDatasourceSpec[F[_]: Effect] extends EffectfulQSpec[F] {
 
   val F = Effect[F]
 
-  def datasource: F[Datasource[F, Stream[F, ?], ResourcePath, QueryResult[F]]]
+  def datasource: F[Datasource[F, Stream[F, ?], InterpretedRead[ResourcePath], QueryResult[F]]]
 
   val nonExistentPath =
     ResourcePath.root() / ResourceName("does") / ResourceName("not") / ResourceName("exist")
@@ -145,8 +146,10 @@ abstract class BlobstoreDatasourceSpec[F[_]: Effect] extends EffectfulQSpec[F] {
     }
   }
 
+  def iRead[A](path: A): InterpretedRead[A] = InterpretedRead(path, List())
+
   def assertPathIsResource(
-      datasource: F[Datasource[F, Stream[F, ?], ResourcePath, QueryResult[F]]],
+      datasource: F[Datasource[F, Stream[F, ?], InterpretedRead[ResourcePath], QueryResult[F]]],
       path: ResourcePath,
       expected: Boolean): F[MatchResult[Any]] =
     for {
@@ -156,11 +159,11 @@ abstract class BlobstoreDatasourceSpec[F[_]: Effect] extends EffectfulQSpec[F] {
 
 
   def assertPathNotFound(
-      datasource: F[Datasource[F, Stream[F, ?], ResourcePath, QueryResult[F]]],
+      datasource: F[Datasource[F, Stream[F, ?], InterpretedRead[ResourcePath], QueryResult[F]]],
       path: ResourcePath): F[MatchResult[Any]] =
     datasource flatMap { ds =>
-      ds.evaluate(path) flatMap {
-        case QueryResult.Typed(_, data) =>
+      ds.evaluate(iRead(path)) flatMap {
+        case QueryResult.Typed(_, data, List()) =>
           data.attempt.compile.toList.map(_.map(_.leftMap(ResourceError.throwableP.getOption)) must_===
             List(Some(ResourceError.pathNotFound(path)).asLeft))
 
@@ -184,12 +187,12 @@ abstract class BlobstoreDatasourceSpec[F[_]: Effect] extends EffectfulQSpec[F] {
     } yield res
 
   def assertResultBytes(
-      datasource: F[Datasource[F, Stream[F, ?], ResourcePath, QueryResult[F]]],
+      datasource: F[Datasource[F, Stream[F, ?], InterpretedRead[ResourcePath], QueryResult[F]]],
       path: ResourcePath,
       expected: Array[Byte]): F[MatchResult[Any]] =
     datasource flatMap { ds =>
-      ds.evaluate(path) flatMap {
-        case QueryResult.Typed(_, data) =>
+      ds.evaluate(iRead(path)) flatMap {
+        case QueryResult.Typed(_, data, List()) =>
           data.compile.to[Array].map(_ must_=== expected)
 
         case _ =>
