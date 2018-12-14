@@ -51,13 +51,13 @@ lazy val core = project
       // Azure doesn't pull in libs like netty-transport-native-kqueue,
       // netty-transport-native-unix-common and netty-transport-native-epoll.
       // Keep nettyVersion in sync with the version that Azure pulls in.
-      "io.netty"             %  "netty-all"                  % nettyVersion,
-      "io.reactivex.rxjava2" %  "rxjava"                     % rxjavaVersion,
-      "org.typelevel"        %% "cats-effect"                % catsEffectVersion,
-      "com.slamdata"         %% "quasar-foundation-internal" % quasarVersion % Test classifier "tests",
-      "org.slf4j"            %  "slf4j-log4j12"              % slf4jVersion % Test,
-      "org.specs2"           %% "specs2-core"                % specsVersion % Test,
-      "org.specs2"           %% "specs2-scalaz"              % specsVersion % Test,
-      "org.specs2"           %% "specs2-scalacheck"          % specsVersion % Test
+      "io.netty"             %  "netty-all"         % nettyVersion,
+      "io.reactivex.rxjava2" %  "rxjava"            % rxjavaVersion,
+      "org.typelevel"        %% "cats-effect"       % catsEffectVersion,
+      "com.slamdata"         %% "quasar-foundation" % quasarVersion % Test classifier "tests",
+      "org.slf4j"            %  "slf4j-log4j12"     % slf4jVersion % Test,
+      "org.specs2"           %% "specs2-core"       % specsVersion % Test,
+      "org.specs2"           %% "specs2-scalaz"     % specsVersion % Test,
+      "org.specs2"           %% "specs2-scalacheck" % specsVersion % Test
     ))
   .enablePlugins(AutomateHeaderPlugin, DatasourcePlugin)
