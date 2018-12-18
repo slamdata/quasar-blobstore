@@ -17,13 +17,14 @@
 package quasar.blobstore
 
 import slamdata.Predef._
+import quasar.blobstore.paths.BlobPath
 
 import cats.data.Kleisli
 import fs2.Stream
 
 object services {
 
-  type GetService[F[_], P] = Kleisli[F, P, Stream[F, Byte]]
+  type GetService[F[_]] = Kleisli[F, BlobPath, Stream[F, Byte]]
 
   type PropsService[F[_], P, R] = Kleisli[F, P, R]
 

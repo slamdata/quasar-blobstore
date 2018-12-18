@@ -43,15 +43,15 @@ import eu.timepit.refined.auto._
 import fs2.{RaiseThrowable, Stream}
 
 class AzureDatasource[
-  F[_]: Monad: MonadResourceErr: RaiseThrowable, BP, PP](
-  resourcePathToBlobPath: Kleisli[F, ResourcePath, BP],
+  F[_]: Monad: MonadResourceErr: RaiseThrowable, PP](
+  resourcePathToBlobPath: Kleisli[F, ResourcePath, BlobPath],
   resourcePathToPrefixPath: Kleisli[F, ResourcePath, PP],
   status: F[BlobstoreStatus],
   prefixPathList: ListService[F, PP, (ResourceName, ResourcePathType)],
-  blobPathIsValid: PropsService[F, BP, Boolean],
-  blobPathGet: GetService[F, BP],
+  blobPathIsValid: PropsService[F, BlobPath, Boolean],
+  blobPathGet: GetService[F],
   jsonVariant: JsonVariant)
-  extends BlobstoreDatasource[F, BP, PP](
+  extends BlobstoreDatasource[F, PP](
     AzureDatasource.dsType,
     jsonVariant,
     resourcePathToBlobPath,
@@ -71,7 +71,7 @@ object AzureDatasource {
       Stream.raiseError(ex)
   }
 
-  def mk[F[_]: ConcurrentEffect: MonadResourceErr](cfg: AzureConfig): F[AzureDatasource[F, BlobPath, PrefixPath]] =
+  def mk[F[_]: ConcurrentEffect: MonadResourceErr](cfg: AzureConfig): F[AzureDatasource[F, PrefixPath]] =
     Azure.mkContainerUrl[F](cfg) map { c =>
       val blobPathToBlobURLK = azureConverters.blobPathToBlobURLK(c)
 
@@ -81,7 +81,7 @@ object AzureDatasource {
           azureConverters.toBlobstorePathsK,
           c)
 
-      new AzureDatasource[F, BlobPath, PrefixPath](
+      new AzureDatasource[F, PrefixPath](
         converters.resourcePathToBlobPathK[F],
         converters.resourcePathToPrefixPathK[F],
         AzureStatusService.mk(c),
@@ -90,9 +90,8 @@ object AzureDatasource {
           blobPathToBlobURLK,
           Kleisli(_ => true.pure[F]),
           _.recover { case _: StorageException => false }),
-        AzureGetService.withErrorHandler[F, BlobPath](
-          AzureGetService.mk(cfg.maxQueueSize.getOrElse(MaxQueueSize.default)),
-          blobPathToBlobURLK,
+        AzureGetService.withErrorHandler[F](
+          AzureGetService.mk(c, cfg.maxQueueSize.getOrElse(MaxQueueSize.default)),
           errorHandler[F, Byte]),
         toJsonVariant(cfg.resourceType))
     }

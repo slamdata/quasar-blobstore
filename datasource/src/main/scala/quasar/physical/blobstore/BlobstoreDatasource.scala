@@ -22,6 +22,7 @@ import quasar.api.resource.{ResourceName, ResourcePath, ResourcePathType}
 import quasar.blobstore.BlobstoreStatus
 import quasar.connector._
 import ParsableType.JsonVariant
+import quasar.blobstore.paths.BlobPath
 import quasar.blobstore.services.{GetService, ListService, PropsService}
 import quasar.connector.datasource.LightweightDatasource
 import quasar.contrib.scalaz.MonadError_
@@ -33,15 +34,15 @@ import cats.syntax.functor._
 import cats.syntax.flatMap._
 import fs2.{RaiseThrowable, Stream}
 
-class BlobstoreDatasource[F[_]: Monad: MonadResourceErr: RaiseThrowable, BP, PP](
+class BlobstoreDatasource[F[_]: Monad: MonadResourceErr: RaiseThrowable, PP](
   val kind: DatasourceType,
   jvar: JsonVariant,
-  resourcePathToBlobPath: Kleisli[F, ResourcePath, BP],
+  resourcePathToBlobPath: Kleisli[F, ResourcePath, BlobPath],
   resourcePathToPrefixPath: Kleisli[F, ResourcePath, PP],
   blobstoreStatus: F[BlobstoreStatus],
   listService: ListService[F, PP, (ResourceName, ResourcePathType)],
-  isResourceService: PropsService[F, BP, Boolean],
-  getService: GetService[F, BP])
+  isResourceService: PropsService[F, BlobPath, Boolean],
+  getService: GetService[F])
   extends LightweightDatasource[F, Stream[F, ?], QueryResult[F]] {
 
   override def evaluate(path: ResourcePath): F[QueryResult[F]] =

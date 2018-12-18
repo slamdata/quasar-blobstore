@@ -18,6 +18,7 @@ package quasar.blobstore.azure
 
 import slamdata.Predef._
 import quasar.blobstore.azure.requests.DownloadArgs
+import quasar.blobstore.paths.BlobPath
 import quasar.blobstore.services.GetService
 
 import cats.data.Kleisli
@@ -30,30 +31,28 @@ import fs2.Stream
 object AzureGetService {
 
   def apply[F[_]: ConcurrentEffect](
+      containerURL: ContainerURL,
       mkArgs: BlobURL => DownloadArgs,
       reliableDownloadOptions: ReliableDownloadOptions,
       maxQueueSize: MaxQueueSize)
-      : GetService[F, BlobURL] =
-    Kleisli[F, BlobURL, DownloadArgs](mkArgs(_).pure[F]) andThen
+      : GetService[F] =
+    converters.blobPathToBlobURLK(containerURL) andThen
+      Kleisli[F, BlobURL, DownloadArgs](mkArgs(_).pure[F]) andThen
       requests.downloadRequestK andThen
       handlers.toByteStreamK(reliableDownloadOptions, maxQueueSize)
 
-  def mk[F[_]: ConcurrentEffect](maxQueueSize: MaxQueueSize): GetService[F, BlobURL] =
+  def mk[F[_]: ConcurrentEffect](containerURL: ContainerURL, maxQueueSize: MaxQueueSize): GetService[F] =
     AzureGetService(
+      containerURL,
       DownloadArgs(_, BlobRange.DEFAULT, BlobAccessConditions.NONE, false, Context.NONE),
       new ReliableDownloadOptions,
       maxQueueSize)
 
-  def withErrorHandler[F[_]: ConcurrentEffect, P](
-      service: GetService[F, BlobURL],
-      toBlobUrl: Kleisli[F, P, BlobURL],
-      errorHandler: P => Throwable => Stream[F, Byte])
-      : GetService[F, P] = {
-
-    val getSvc = toBlobUrl andThen service
-
-    Kleisli[F, P, Stream[F, Byte]] { p =>
-      Stream.force(getSvc(p)).handleErrorWith(errorHandler(p)).pure[F]
+  def withErrorHandler[F[_]: ConcurrentEffect](
+      service: GetService[F],
+      errorHandler: BlobPath => Throwable => Stream[F, Byte])
+      : GetService[F] =
+    Kleisli[F, BlobPath, Stream[F, Byte]] { p =>
+      Stream.force(service(p)).handleErrorWith(errorHandler(p)).pure[F]
     }
-  }
 }
