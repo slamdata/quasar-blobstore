@@ -41,7 +41,6 @@ import scalaz.syntax.either._
 import scalaz.syntax.equal._
 
 object AzureDatasourceModule extends LightweightDatasourceModule {
-
   private val redactedCreds =
     AzureCredentials(
       AccountName("<REDACTED>"),

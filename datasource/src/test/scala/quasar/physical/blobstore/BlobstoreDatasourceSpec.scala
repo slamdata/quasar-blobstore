@@ -35,10 +35,11 @@ import fs2.Stream
 import org.specs2.matcher.MatchResult
 
 abstract class BlobstoreDatasourceSpec[F[_]: Effect] extends EffectfulQSpec[F] {
+  import azure.AzureDatasourceModule.DS
 
   val F = Effect[F]
 
-  def datasource: F[Datasource[F, Stream[F, ?], InterpretedRead[ResourcePath], QueryResult[F]]]
+  def datasource: F[DS[F]]
 
   val nonExistentPath =
     ResourcePath.root() / ResourceName("does") / ResourceName("not") / ResourceName("exist")
@@ -149,7 +150,7 @@ abstract class BlobstoreDatasourceSpec[F[_]: Effect] extends EffectfulQSpec[F] {
   def iRead[A](path: A): InterpretedRead[A] = InterpretedRead(path, List())
 
   def assertPathIsResource(
-      datasource: F[Datasource[F, Stream[F, ?], InterpretedRead[ResourcePath], QueryResult[F]]],
+      datasource: F[DS[F]],
       path: ResourcePath,
       expected: Boolean): F[MatchResult[Any]] =
     for {
@@ -159,7 +160,7 @@ abstract class BlobstoreDatasourceSpec[F[_]: Effect] extends EffectfulQSpec[F] {
 
 
   def assertPathNotFound(
-      datasource: F[Datasource[F, Stream[F, ?], InterpretedRead[ResourcePath], QueryResult[F]]],
+      datasource: F[DS[F]],
       path: ResourcePath): F[MatchResult[Any]] =
     datasource flatMap { ds =>
       ds.evaluate(iRead(path)) flatMap {
@@ -187,7 +188,7 @@ abstract class BlobstoreDatasourceSpec[F[_]: Effect] extends EffectfulQSpec[F] {
     } yield res
 
   def assertResultBytes(
-      datasource: F[Datasource[F, Stream[F, ?], InterpretedRead[ResourcePath], QueryResult[F]]],
+      datasource: F[DS[F]],
       path: ResourcePath,
       expected: Array[Byte]): F[MatchResult[Any]] =
     datasource flatMap { ds =>
