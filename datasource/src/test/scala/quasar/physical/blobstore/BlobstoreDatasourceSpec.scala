@@ -19,7 +19,7 @@ package quasar.physical.blobstore
 import slamdata.Predef._
 import quasar.EffectfulQSpec
 import quasar.api.resource.{ResourceName, ResourcePath, ResourcePathType}
-import quasar.connector.{Datasource, QueryResult, ResourceError}
+import quasar.connector.{QueryResult, ResourceError}
 import quasar.qscript.InterpretedRead
 
 import java.nio.charset.StandardCharsets
@@ -31,7 +31,6 @@ import cats.syntax.applicative._
 import cats.syntax.either._
 import cats.syntax.flatMap._
 import cats.syntax.functor._
-import fs2.Stream
 import org.specs2.matcher.MatchResult
 
 abstract class BlobstoreDatasourceSpec[F[_]: Effect] extends EffectfulQSpec[F] {
