@@ -27,7 +27,6 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import cats.data.OptionT
 import cats.effect.Effect
 import cats.syntax.applicative._
-import cats.syntax.either._
 import cats.syntax.flatMap._
 import cats.syntax.functor._
 import fs2.Stream
@@ -159,13 +158,9 @@ abstract class BlobstoreDatasourceSpec[F[_]: Effect] extends EffectfulQSpec[F] {
       datasource: F[Datasource[F, Stream[F, ?], ResourcePath, QueryResult[F]]],
       path: ResourcePath): F[MatchResult[Any]] =
     datasource flatMap { ds =>
-      ds.evaluate(path) flatMap {
-        case QueryResult.Typed(_, data) =>
-          data.attempt.compile.toList.map(_.map(_.leftMap(ResourceError.throwableP.getOption)) must_===
-            List(Some(ResourceError.pathNotFound(path)).asLeft))
-
-        case r =>
-          ko(s"Unexpected QueryResult: $r").pure[F]
+      F.attempt(ds.evaluate(path)) map {
+        case Left(t) => ResourceError.throwableP.getOption(t) must_=== Some(ResourceError.pathNotFound(path))
+        case Right(r) => ko(s"Unexpected QueryResult: $r")
       }
     }
 

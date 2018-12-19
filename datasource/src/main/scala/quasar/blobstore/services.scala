@@ -24,7 +24,7 @@ import fs2.Stream
 
 object services {
 
-  type GetService[F[_]] = Kleisli[F, BlobPath, Stream[F, Byte]]
+  type GetService[F[_]] = Kleisli[F, BlobPath, Option[Stream[F, Byte]]]
 
   type PropsService[F[_], P, R] = Kleisli[F, P, R]
 

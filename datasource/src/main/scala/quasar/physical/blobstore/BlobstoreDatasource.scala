@@ -30,11 +30,12 @@ import quasar.contrib.scalaz.MonadError_
 import cats.Monad
 import cats.data.Kleisli
 import cats.effect.IO
+import cats.syntax.applicative._
 import cats.syntax.functor._
 import cats.syntax.flatMap._
-import fs2.{RaiseThrowable, Stream}
+import fs2.Stream
 
-class BlobstoreDatasource[F[_]: Monad: MonadResourceErr: RaiseThrowable, PP](
+class BlobstoreDatasource[F[_]: Monad: MonadResourceErr, PP](
   val kind: DatasourceType,
   jvar: JsonVariant,
   resourcePathToBlobPath: Kleisli[F, ResourcePath, BlobPath],
@@ -45,10 +46,14 @@ class BlobstoreDatasource[F[_]: Monad: MonadResourceErr: RaiseThrowable, PP](
   getService: GetService[F])
   extends LightweightDatasource[F, Stream[F, ?], QueryResult[F]] {
 
+  private def raisePathNotFound(path: ResourcePath) =
+    MonadResourceErr[F].raiseError(ResourceError.pathNotFound(path))
+
   override def evaluate(path: ResourcePath): F[QueryResult[F]] =
     for {
       blobPath <- resourcePathToBlobPath(path)
-      bytes <- getService(blobPath)
+      optBytes <- getService(blobPath)
+      bytes <- optBytes.map(_.pure[F]).getOrElse(raisePathNotFound(path))
       qr = QueryResult.typed[F](ParsableType.json(jvar, false), bytes)
     } yield qr
 

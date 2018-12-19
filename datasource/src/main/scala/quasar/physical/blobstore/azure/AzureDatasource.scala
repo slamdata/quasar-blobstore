@@ -25,7 +25,7 @@ import quasar.blobstore.{BlobstoreStatus, ResourceType}
 import quasar.blobstore.azure.{converters => azureConverters, _}
 import quasar.blobstore.paths.{BlobPath, BlobstorePath, PrefixPath}
 import quasar.blobstore.services.{GetService, ListService, PropsService}
-import quasar.connector.{MonadResourceErr, ResourceError}
+import quasar.connector.MonadResourceErr
 import quasar.connector.ParsableType.JsonVariant
 
 import java.lang.Integer
@@ -33,17 +33,14 @@ import java.lang.Integer
 import cats.Monad
 import cats.data.Kleisli
 import cats.effect.ConcurrentEffect
-import cats.instances.int._
 import cats.syntax.applicative._
 import cats.syntax.applicativeError._
-import cats.syntax.eq._
 import cats.syntax.functor._
 import com.microsoft.azure.storage.blob.StorageException
 import eu.timepit.refined.auto._
-import fs2.{RaiseThrowable, Stream}
 
 class AzureDatasource[
-  F[_]: Monad: MonadResourceErr: RaiseThrowable, PP](
+  F[_]: Monad: MonadResourceErr, PP](
   resourcePathToBlobPath: Kleisli[F, ResourcePath, BlobPath],
   resourcePathToPrefixPath: Kleisli[F, ResourcePath, PP],
   status: F[BlobstoreStatus],
@@ -64,13 +61,6 @@ class AzureDatasource[
 object AzureDatasource {
   val dsType: DatasourceType = DatasourceType("azure", 1L)
 
-  private def errorHandler[F[_]: MonadResourceErr: RaiseThrowable, A](path: BlobPath): Throwable => Stream[F, A] = {
-    case ex: StorageException if ex.statusCode() === 404 =>
-      Stream.eval(MonadResourceErr.raiseError(ResourceError.pathNotFound(converters.blobPathToResourcePath(path))))
-    case ex =>
-      Stream.raiseError(ex)
-  }
-
   def mk[F[_]: ConcurrentEffect: MonadResourceErr](cfg: AzureConfig): F[AzureDatasource[F, PrefixPath]] =
     Azure.mkContainerUrl[F](cfg) map { c =>
       val blobPathToBlobURLK = azureConverters.blobPathToBlobURLK(c)
@@ -90,9 +80,7 @@ object AzureDatasource {
           blobPathToBlobURLK,
           Kleisli(_ => true.pure[F]),
           _.recover { case _: StorageException => false }),
-        AzureGetService.withErrorHandler[F](
-          AzureGetService.mk(c, cfg.maxQueueSize.getOrElse(MaxQueueSize.default)),
-          errorHandler[F, Byte]),
+        AzureGetService.mk(c, cfg.maxQueueSize.getOrElse(MaxQueueSize.default)),
         toJsonVariant(cfg.resourceType))
     }
 
