@@ -18,31 +18,29 @@ package quasar.blobstore.azure
 
 import slamdata.Predef._
 import quasar.blobstore.azure.requests.ListBlobHierarchyArgs
+import quasar.blobstore.paths.PrefixPath
 import quasar.blobstore.services.ListService
+
+import java.lang.Integer
 
 import cats.data.Kleisli
 import cats.effect.Async
 import com.microsoft.azure.storage.blob.{ContainerURL, ListBlobsOptions}
-import com.microsoft.azure.storage.blob.models.ContainerListBlobHierarchySegmentResponse
 import com.microsoft.rest.v2.Context
-import fs2.Stream
 
 object AzureListService {
-  def apply[F[_]: Async, P, R](
-      toListBlobsOption: Kleisli[F, P, ListBlobsOptions],
-      toResponse: Kleisli[F, ContainerListBlobHierarchySegmentResponse, Option[Stream[F, R]]],
+  def apply[F[_]: Async](
+      toListBlobsOption: Kleisli[F, PrefixPath, ListBlobsOptions],
       mkArgs: ListBlobsOptions => ListBlobHierarchyArgs)
-      : ListService[F, P, R] =
-    toListBlobsOption map mkArgs andThen requests.listRequestK andThen toResponse
+      : ListService[F] =
+    toListBlobsOption map
+      mkArgs andThen
+      requests.listRequestK andThen
+      converters.toBlobstorePathsK
 
 
-  def mk[F[_]: Async, P, R](
-      toListBlobsOptions: Kleisli[F, P, ListBlobsOptions],
-      toResponse: Kleisli[F, ContainerListBlobHierarchySegmentResponse, Option[Stream[F, R]]],
-      containerURL: ContainerURL)
-      : ListService[F, P, R] =
-    AzureListService[F, P, R](
-      toListBlobsOptions,
-      toResponse,
+  def mk[F[_]: Async](containerURL: ContainerURL): ListService[F] =
+    AzureListService[F](
+      converters.prefixPathToListBlobOptionsK(details = None, maxResults = Some(Integer.valueOf(5000))),
       ListBlobHierarchyArgs(containerURL, None, "/", _, Context.NONE))
 }

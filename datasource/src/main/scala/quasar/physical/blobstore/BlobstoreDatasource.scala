@@ -22,7 +22,7 @@ import quasar.api.resource.{ResourceName, ResourcePath, ResourcePathType}
 import quasar.blobstore.BlobstoreStatus
 import quasar.connector._
 import ParsableType.JsonVariant
-import quasar.blobstore.paths.BlobPath
+import quasar.blobstore.paths.{BlobPath, PrefixPath}
 import quasar.blobstore.services.{GetService, ListService, PropsService}
 import quasar.connector.datasource.LightweightDatasource
 import quasar.contrib.scalaz.MonadError_
@@ -35,13 +35,13 @@ import cats.syntax.functor._
 import cats.syntax.flatMap._
 import fs2.Stream
 
-class BlobstoreDatasource[F[_]: Monad: MonadResourceErr, PP, P](
+class BlobstoreDatasource[F[_]: Monad: MonadResourceErr, P](
   val kind: DatasourceType,
   jvar: JsonVariant,
   resourcePathToBlobPath: Kleisli[F, ResourcePath, BlobPath],
-  resourcePathToPrefixPath: Kleisli[F, ResourcePath, PP],
+  resourcePathToPrefixPath: Kleisli[F, ResourcePath, PrefixPath],
   blobstoreStatus: F[BlobstoreStatus],
-  listService: ListService[F, PP, (ResourceName, ResourcePathType)],
+  listService: ListService[F],
   propsService: PropsService[F, P],
   getService: GetService[F])
   extends LightweightDatasource[F, Stream[F, ?], QueryResult[F]] {
@@ -62,7 +62,7 @@ class BlobstoreDatasource[F[_]: Monad: MonadResourceErr, PP, P](
 
   override def prefixedChildPaths(prefixPath: ResourcePath)
       : F[Option[Stream[F, (ResourceName, ResourcePathType)]]] =
-    (resourcePathToPrefixPath andThen listService).apply(prefixPath)
+    (resourcePathToPrefixPath andThen listService.map(_.map(_.map(converters.toResourceNameType)))).apply(prefixPath)
 
   def asDsType: Datasource[F, Stream[F, ?], ResourcePath, QueryResult[F]] = this
 

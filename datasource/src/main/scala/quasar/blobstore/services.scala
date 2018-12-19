@@ -17,7 +17,7 @@
 package quasar.blobstore
 
 import slamdata.Predef._
-import quasar.blobstore.paths.BlobPath
+import quasar.blobstore.paths.{BlobPath, BlobstorePath, PrefixPath}
 
 import cats.data.Kleisli
 import fs2.Stream
@@ -28,6 +28,6 @@ object services {
 
   type PropsService[F[_], P] = Kleisli[F, BlobPath, Option[P]]
 
-  type ListService[F[_], P, R] = Kleisli[F, P, Option[Stream[F, R]]]
+  type ListService[F[_]] = Kleisli[F, PrefixPath, Option[Stream[F, BlobstorePath]]]
 
 }

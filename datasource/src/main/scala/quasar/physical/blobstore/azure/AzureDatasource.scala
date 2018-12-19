@@ -20,15 +20,13 @@ package azure
 
 import slamdata.Predef._
 import quasar.api.datasource.DatasourceType
-import quasar.api.resource.{ResourceName, ResourcePath, ResourcePathType}
+import quasar.api.resource.ResourcePath
 import quasar.blobstore.{BlobstoreStatus, ResourceType}
-import quasar.blobstore.azure.{converters => azureConverters, _}
-import quasar.blobstore.paths.{BlobPath, BlobstorePath, PrefixPath}
+import quasar.blobstore.azure.{converters => _, _}
+import quasar.blobstore.paths.{BlobPath, PrefixPath}
 import quasar.blobstore.services.{GetService, ListService, PropsService}
 import quasar.connector.MonadResourceErr
 import quasar.connector.ParsableType.JsonVariant
-
-import java.lang.Integer
 
 import cats.Monad
 import cats.data.Kleisli
@@ -38,15 +36,15 @@ import com.microsoft.azure.storage.blob.models.BlobGetPropertiesResponse
 import eu.timepit.refined.auto._
 
 class AzureDatasource[
-  F[_]: Monad: MonadResourceErr, PP](
+  F[_]: Monad: MonadResourceErr](
   resourcePathToBlobPath: Kleisli[F, ResourcePath, BlobPath],
-  resourcePathToPrefixPath: Kleisli[F, ResourcePath, PP],
+  resourcePathToPrefixPath: Kleisli[F, ResourcePath, PrefixPath],
   status: F[BlobstoreStatus],
-  prefixPathList: ListService[F, PP, (ResourceName, ResourcePathType)],
+  prefixPathList: ListService[F],
   blobPathProps: PropsService[F, BlobGetPropertiesResponse],
   blobPathGet: GetService[F],
   jsonVariant: JsonVariant)
-  extends BlobstoreDatasource[F, PP, BlobGetPropertiesResponse](
+  extends BlobstoreDatasource[F, BlobGetPropertiesResponse](
     AzureDatasource.dsType,
     jsonVariant,
     resourcePathToBlobPath,
@@ -59,20 +57,14 @@ class AzureDatasource[
 object AzureDatasource {
   val dsType: DatasourceType = DatasourceType("azure", 1L)
 
-  def mk[F[_]: ConcurrentEffect: MonadResourceErr](cfg: AzureConfig): F[AzureDatasource[F, PrefixPath]] =
+  def mk[F[_]: ConcurrentEffect: MonadResourceErr](cfg: AzureConfig): F[AzureDatasource[F]] =
     Azure.mkContainerUrl[F](cfg) map { c =>
 
-      val listService =
-        AzureListService.mk[F, PrefixPath, BlobstorePath](
-          azureConverters.prefixPathToListBlobOptionsK(details = None, maxResults = Some(Integer.valueOf(5000))),
-          azureConverters.toBlobstorePathsK,
-          c)
-
-      new AzureDatasource[F, PrefixPath](
+      new AzureDatasource[F](
         converters.resourcePathToBlobPathK[F],
         converters.resourcePathToPrefixPathK[F],
         AzureStatusService.mk(c),
-        listService.map(_.map(_.map(converters.toResourceNameType))),
+        AzureListService.mk[F](c),
         AzurePropsService.mk[F](c) mapF
           handlers.recoverStorageException[F, Option[BlobGetPropertiesResponse]] map
           (_.flatten),
