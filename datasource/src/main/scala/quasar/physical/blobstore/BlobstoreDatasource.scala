@@ -19,10 +19,9 @@ package quasar.physical.blobstore
 import slamdata.Predef._
 import quasar.api.datasource.DatasourceType
 import quasar.api.resource.{ResourceName, ResourcePath, ResourcePathType}
-import quasar.blobstore.BlobstoreStatus
 import quasar.connector._
 import ParsableType.JsonVariant
-import quasar.blobstore.services.{GetService, ListService, PropsService}
+import quasar.blobstore.services.{GetService, ListService, PropsService, StatusService}
 import quasar.connector.datasource.LightweightDatasource
 import quasar.contrib.scalaz.MonadError_
 
@@ -36,7 +35,7 @@ import fs2.Stream
 class BlobstoreDatasource[F[_]: Monad: MonadResourceErr, P](
   val kind: DatasourceType,
   jvar: JsonVariant,
-  blobstoreStatus: F[BlobstoreStatus],
+  statusService: StatusService[F],
   listService: ListService[F],
   propsService: PropsService[F, P],
   getService: GetService[F])
@@ -63,7 +62,7 @@ class BlobstoreDatasource[F[_]: Monad: MonadResourceErr, P](
 
   def asDsType: Datasource[F, Stream[F, ?], ResourcePath, QueryResult[F]] = this
 
-  def status: F[BlobstoreStatus] = blobstoreStatus
+  def status: StatusService[F] = statusService
 }
 
 object BlobstoreDatasource {

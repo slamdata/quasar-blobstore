@@ -20,9 +20,9 @@ package azure
 
 import slamdata.Predef._
 import quasar.api.datasource.DatasourceType
-import quasar.blobstore.{BlobstoreStatus, ResourceType}
+import quasar.blobstore.ResourceType
 import quasar.blobstore.azure.{converters => _, _}
-import quasar.blobstore.services.{GetService, ListService, PropsService}
+import quasar.blobstore.services.{GetService, ListService, PropsService, StatusService}
 import quasar.connector.MonadResourceErr
 import quasar.connector.ParsableType.JsonVariant
 
@@ -34,18 +34,18 @@ import eu.timepit.refined.auto._
 
 class AzureDatasource[
   F[_]: Monad: MonadResourceErr](
-  status: F[BlobstoreStatus],
-  prefixPathList: ListService[F],
-  blobPathProps: PropsService[F, BlobGetPropertiesResponse],
-  blobPathGet: GetService[F],
+  statusService: StatusService[F],
+  listService: ListService[F],
+  propsService: PropsService[F, BlobGetPropertiesResponse],
+  getService: GetService[F],
   jsonVariant: JsonVariant)
   extends BlobstoreDatasource[F, BlobGetPropertiesResponse](
     AzureDatasource.dsType,
     jsonVariant,
-    status,
-    prefixPathList,
-    blobPathProps,
-    blobPathGet)
+    statusService,
+    listService,
+    propsService,
+    getService)
 
 object AzureDatasource {
   val dsType: DatasourceType = DatasourceType("azure", 1L)
