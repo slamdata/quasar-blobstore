@@ -26,7 +26,7 @@ object services {
 
   type GetService[F[_]] = Kleisli[F, BlobPath, Option[Stream[F, Byte]]]
 
-  type PropsService[F[_], P, R] = Kleisli[F, P, R]
+  type PropsService[F[_], P] = Kleisli[F, BlobPath, Option[P]]
 
   type ListService[F[_], P, R] = Kleisli[F, P, Option[Stream[F, R]]]
 

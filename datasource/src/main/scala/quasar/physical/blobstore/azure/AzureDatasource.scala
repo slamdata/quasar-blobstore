@@ -33,10 +33,8 @@ import java.lang.Integer
 import cats.Monad
 import cats.data.Kleisli
 import cats.effect.ConcurrentEffect
-import cats.syntax.applicative._
-import cats.syntax.applicativeError._
 import cats.syntax.functor._
-import com.microsoft.azure.storage.blob.StorageException
+import com.microsoft.azure.storage.blob.models.BlobGetPropertiesResponse
 import eu.timepit.refined.auto._
 
 class AzureDatasource[
@@ -45,17 +43,17 @@ class AzureDatasource[
   resourcePathToPrefixPath: Kleisli[F, ResourcePath, PP],
   status: F[BlobstoreStatus],
   prefixPathList: ListService[F, PP, (ResourceName, ResourcePathType)],
-  blobPathIsValid: PropsService[F, BlobPath, Boolean],
+  blobPathProps: PropsService[F, BlobGetPropertiesResponse],
   blobPathGet: GetService[F],
   jsonVariant: JsonVariant)
-  extends BlobstoreDatasource[F, PP](
+  extends BlobstoreDatasource[F, PP, BlobGetPropertiesResponse](
     AzureDatasource.dsType,
     jsonVariant,
     resourcePathToBlobPath,
     resourcePathToPrefixPath,
     status,
     prefixPathList,
-    blobPathIsValid,
+    blobPathProps,
     blobPathGet)
 
 object AzureDatasource {
@@ -63,7 +61,6 @@ object AzureDatasource {
 
   def mk[F[_]: ConcurrentEffect: MonadResourceErr](cfg: AzureConfig): F[AzureDatasource[F, PrefixPath]] =
     Azure.mkContainerUrl[F](cfg) map { c =>
-      val blobPathToBlobURLK = azureConverters.blobPathToBlobURLK(c)
 
       val listService =
         AzureListService.mk[F, PrefixPath, BlobstorePath](
@@ -76,10 +73,9 @@ object AzureDatasource {
         converters.resourcePathToPrefixPathK[F],
         AzureStatusService.mk(c),
         listService.map(_.map(_.map(converters.toResourceNameType))),
-        AzurePropsService.mk[F, BlobPath, Boolean](
-          blobPathToBlobURLK,
-          Kleisli(_ => true.pure[F]),
-          _.recover { case _: StorageException => false }),
+        AzurePropsService.mk[F](c) mapF
+          handlers.recoverStorageException[F, Option[BlobGetPropertiesResponse]] map
+          (_.flatten),
         AzureGetService.mk(c, cfg.maxQueueSize.getOrElse(MaxQueueSize.default)),
         toJsonVariant(cfg.resourceType))
     }

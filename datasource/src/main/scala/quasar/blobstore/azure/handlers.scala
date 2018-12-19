@@ -28,6 +28,7 @@ import cats.instances.int._
 import cats.syntax.applicativeError._
 import cats.syntax.eq._
 import cats.syntax.functor._
+import cats.syntax.option._
 import com.microsoft.azure.storage.blob.{DownloadResponse, ReliableDownloadOptions, StorageException}
 import fs2.{Chunk, Stream}
 
@@ -39,6 +40,16 @@ object handlers {
       case ex: StorageException if ex.statusCode === 404 => BlobstoreStatus.notFound()
       case ex: StorageException => BlobstoreStatus.notOk(ex.message())
       case NonFatal(t) => BlobstoreStatus.notOk(t.getMessage)
+    }
+
+  def recoverNotFound[F[_], A](fa: F[A])(implicit F: ApplicativeError[F, Throwable]): F[Option[A]] =
+    F.recover(fa.map(_.some)) {
+      case ex: StorageException if ex.statusCode() === 404 => none
+    }
+
+  def recoverStorageException[F[_], A](fa: F[A])(implicit F: ApplicativeError[F, Throwable]): F[Option[A]] =
+    F.recover(fa.map(_.some)) {
+      case ex: StorageException => none
     }
 
   def toByteStream[F[_]: ConcurrentEffect](reliableDownloadOptions: ReliableDownloadOptions, maxQueueSize: MaxQueueSize)(r: DownloadResponse): F[Stream[F, Byte]] =

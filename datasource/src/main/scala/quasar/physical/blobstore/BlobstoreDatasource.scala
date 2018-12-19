@@ -35,14 +35,14 @@ import cats.syntax.functor._
 import cats.syntax.flatMap._
 import fs2.Stream
 
-class BlobstoreDatasource[F[_]: Monad: MonadResourceErr, PP](
+class BlobstoreDatasource[F[_]: Monad: MonadResourceErr, PP, P](
   val kind: DatasourceType,
   jvar: JsonVariant,
   resourcePathToBlobPath: Kleisli[F, ResourcePath, BlobPath],
   resourcePathToPrefixPath: Kleisli[F, ResourcePath, PP],
   blobstoreStatus: F[BlobstoreStatus],
   listService: ListService[F, PP, (ResourceName, ResourcePathType)],
-  isResourceService: PropsService[F, BlobPath, Boolean],
+  propsService: PropsService[F, P],
   getService: GetService[F])
   extends LightweightDatasource[F, Stream[F, ?], QueryResult[F]] {
 
@@ -58,7 +58,7 @@ class BlobstoreDatasource[F[_]: Monad: MonadResourceErr, PP](
     } yield qr
 
   override def pathIsResource(path: ResourcePath): F[Boolean] =
-    (resourcePathToBlobPath andThen isResourceService).apply(path)
+    (resourcePathToBlobPath andThen propsService map { _.isDefined }).apply(path)
 
   override def prefixedChildPaths(prefixPath: ResourcePath)
       : F[Option[Stream[F, (ResourceName, ResourcePathType)]]] =

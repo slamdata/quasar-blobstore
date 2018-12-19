@@ -20,14 +20,9 @@ import slamdata.Predef._
 import quasar.blobstore.azure.requests.DownloadArgs
 import quasar.blobstore.services.GetService
 
-import cats.ApplicativeError
 import cats.data.Kleisli
 import cats.effect.ConcurrentEffect
-import cats.instances.int._
 import cats.syntax.applicative._
-import cats.syntax.eq._
-import cats.syntax.functor._
-import cats.syntax.option._
 import com.microsoft.azure.storage.blob._
 import com.microsoft.rest.v2.Context
 import fs2.Stream
@@ -44,7 +39,7 @@ object AzureGetService {
       Kleisli[F, BlobURL, DownloadArgs](mkArgs(_).pure[F]) andThen
       requests.downloadRequestK andThen
       handlers.toByteStreamK(reliableDownloadOptions, maxQueueSize) mapF
-      handleNotFound[F, Stream[F, Byte]]
+      handlers.recoverNotFound[F, Stream[F, Byte]]
 
   def mk[F[_]: ConcurrentEffect](containerURL: ContainerURL, maxQueueSize: MaxQueueSize): GetService[F] =
     AzureGetService(
@@ -52,9 +47,4 @@ object AzureGetService {
       DownloadArgs(_, BlobRange.DEFAULT, BlobAccessConditions.NONE, false, Context.NONE),
       new ReliableDownloadOptions,
       maxQueueSize)
-
-  def handleNotFound[F[_], A](fa: F[A])(implicit F: ApplicativeError[F, Throwable]): F[Option[A]] =
-    F.recover(fa.map(_.some)) {
-      case ex: StorageException if ex.statusCode() === 404 => none
-    }
 }
