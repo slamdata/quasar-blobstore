@@ -20,16 +20,13 @@ package azure
 
 import slamdata.Predef._
 import quasar.api.datasource.DatasourceType
-import quasar.api.resource.ResourcePath
 import quasar.blobstore.{BlobstoreStatus, ResourceType}
 import quasar.blobstore.azure.{converters => _, _}
-import quasar.blobstore.paths.{BlobPath, PrefixPath}
 import quasar.blobstore.services.{GetService, ListService, PropsService}
 import quasar.connector.MonadResourceErr
 import quasar.connector.ParsableType.JsonVariant
 
 import cats.Monad
-import cats.data.Kleisli
 import cats.effect.ConcurrentEffect
 import cats.syntax.functor._
 import com.microsoft.azure.storage.blob.models.BlobGetPropertiesResponse
@@ -37,8 +34,6 @@ import eu.timepit.refined.auto._
 
 class AzureDatasource[
   F[_]: Monad: MonadResourceErr](
-  resourcePathToBlobPath: Kleisli[F, ResourcePath, BlobPath],
-  resourcePathToPrefixPath: Kleisli[F, ResourcePath, PrefixPath],
   status: F[BlobstoreStatus],
   prefixPathList: ListService[F],
   blobPathProps: PropsService[F, BlobGetPropertiesResponse],
@@ -47,8 +42,6 @@ class AzureDatasource[
   extends BlobstoreDatasource[F, BlobGetPropertiesResponse](
     AzureDatasource.dsType,
     jsonVariant,
-    resourcePathToBlobPath,
-    resourcePathToPrefixPath,
     status,
     prefixPathList,
     blobPathProps,
@@ -61,8 +54,6 @@ object AzureDatasource {
     Azure.mkContainerUrl[F](cfg) map { c =>
 
       new AzureDatasource[F](
-        converters.resourcePathToBlobPathK[F],
-        converters.resourcePathToPrefixPathK[F],
         AzureStatusService.mk(c),
         AzureListService.mk[F](c),
         AzurePropsService.mk[F](c) mapF

@@ -22,13 +22,11 @@ import quasar.api.resource.{ResourceName, ResourcePath, ResourcePathType}
 import quasar.blobstore.BlobstoreStatus
 import quasar.connector._
 import ParsableType.JsonVariant
-import quasar.blobstore.paths.{BlobPath, PrefixPath}
 import quasar.blobstore.services.{GetService, ListService, PropsService}
 import quasar.connector.datasource.LightweightDatasource
 import quasar.contrib.scalaz.MonadError_
 
 import cats.Monad
-import cats.data.Kleisli
 import cats.effect.IO
 import cats.syntax.applicative._
 import cats.syntax.functor._
@@ -38,8 +36,6 @@ import fs2.Stream
 class BlobstoreDatasource[F[_]: Monad: MonadResourceErr, P](
   val kind: DatasourceType,
   jvar: JsonVariant,
-  resourcePathToBlobPath: Kleisli[F, ResourcePath, BlobPath],
-  resourcePathToPrefixPath: Kleisli[F, ResourcePath, PrefixPath],
   blobstoreStatus: F[BlobstoreStatus],
   listService: ListService[F],
   propsService: PropsService[F, P],
@@ -51,18 +47,19 @@ class BlobstoreDatasource[F[_]: Monad: MonadResourceErr, P](
 
   override def evaluate(path: ResourcePath): F[QueryResult[F]] =
     for {
-      blobPath <- resourcePathToBlobPath(path)
-      optBytes <- getService(blobPath)
+      optBytes <- (converters.resourcePathToBlobPathK[F] andThen getService).apply(path)
       bytes <- optBytes.map(_.pure[F]).getOrElse(raisePathNotFound(path))
       qr = QueryResult.typed[F](ParsableType.json(jvar, false), bytes)
     } yield qr
 
   override def pathIsResource(path: ResourcePath): F[Boolean] =
-    (resourcePathToBlobPath andThen propsService map { _.isDefined }).apply(path)
+    (converters.resourcePathToBlobPathK andThen propsService map { _.isDefined }).apply(path)
 
   override def prefixedChildPaths(prefixPath: ResourcePath)
       : F[Option[Stream[F, (ResourceName, ResourcePathType)]]] =
-    (resourcePathToPrefixPath andThen listService.map(_.map(_.map(converters.toResourceNameType)))).apply(prefixPath)
+    (converters.resourcePathToPrefixPathK andThen
+      listService.map(_.map(_.map(converters.toResourceNameType)))
+    ).apply(prefixPath)
 
   def asDsType: Datasource[F, Stream[F, ?], ResourcePath, QueryResult[F]] = this
 
