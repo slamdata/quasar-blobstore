@@ -24,6 +24,7 @@ import ParsableType.JsonVariant
 import quasar.blobstore.services.{GetService, ListService, PropsService, StatusService}
 import quasar.connector.datasource.LightweightDatasource
 import quasar.contrib.scalaz.MonadError_
+import quasar.qscript.InterpretedRead
 
 import cats.Monad
 import cats.effect.IO
@@ -44,11 +45,11 @@ class BlobstoreDatasource[F[_]: Monad: MonadResourceErr, P](
   private def raisePathNotFound(path: ResourcePath) =
     MonadResourceErr[F].raiseError(ResourceError.pathNotFound(path))
 
-  override def evaluate(path: ResourcePath): F[QueryResult[F]] =
+  override def evaluate(iRead: InterpretedRead[ResourcePath]): F[QueryResult[F]] =
     for {
-      optBytes <- (converters.resourcePathToBlobPathK[F] andThen getService).apply(path)
-      bytes <- optBytes.map(_.pure[F]).getOrElse(raisePathNotFound(path))
-      qr = QueryResult.typed[F](ParsableType.json(jvar, false), bytes)
+      optBytes <- (converters.resourcePathToBlobPathK[F] andThen getService).apply(iRead.path)
+      bytes <- optBytes.map(_.pure[F]).getOrElse(raisePathNotFound(iRead.path))
+      qr = QueryResult.typed[F](ParsableType.json(jvar, false), bytes, iRead.instructions)
     } yield qr
 
   override def pathIsResource(path: ResourcePath): F[Boolean] =
@@ -60,7 +61,7 @@ class BlobstoreDatasource[F[_]: Monad: MonadResourceErr, P](
       listService.map(_.map(_.map(converters.toResourceNameType)))
     ).apply(prefixPath)
 
-  def asDsType: Datasource[F, Stream[F, ?], ResourcePath, QueryResult[F]] = this
+  def asDsType: Datasource[F, Stream[F, ?], InterpretedRead[ResourcePath], QueryResult[F]] = this
 
   def status: StatusService[F] = statusService
 }

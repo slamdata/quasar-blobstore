@@ -27,6 +27,10 @@ env:
     # DISCORD_WEBHOOK_TOKENS
     - secure: "fF8Kb8oxsDLAtkSXZIAFPq/HDZ/Ae3g6rkMFHHItiXP0Vm1R4TAVIcO4OLwBp6fPmMWIlUT3+a+Xj6LeEGyRcNvpNG/CQxKXT54Kfr9QW9osjXC81OYnNKAUingu/9HMU5YIFeObyC5Yofi+0VM8KCh12faPOUY1HwZqpB6HfYdjC0f61WDjHi8nZoRrUXshim/0CCIcU/jCVuZ1zcClRLNiffgS53ShD/0G0R7koD1o1K5iOyv06eXwf6IDchR1cQ1S+tFGz1ioI/vtei4W7XvE7KQLcwCwChQIYE8C9F41QNzzahHwYIxQ00sQAtomea+Hf8ffGSY4L6dh4lMvFqXYWrfl3kCpb2CGmSp2qoKO+v2PT5cI7vOohK02Ow0tXQ+2HFjxX4rDp62BCivZ8HjqPaAe1mK+b+0TOZzXDMmjfUBtRYCpm8oWBJbqhoBkNIQIYt9i1kz//plr3DfEewkfFkSlHfq46m4zENf7/FzRySZONYEGVhqHTfUMwOZ6up4S+BqPCaMFDE8d5hd3tokUv1DFGiiO2RJchQh6NMVKKrtlyCovol7+AN07aK/f8bk/8RwWRjwidnWZubgsvn4db6DkmJ/f0/w1UDzwFqI+cb1z4kWBHA/EPOtv0G89QQbLevUSbZDQoNFCh3L9Lb/kb5A9hpsyODFIRCirx3U="
 
+install:
+  - $SBT transferCommonResources
+  - scripts/commonSetup
+
 jobs:
   include:
     - stage: test
@@ -45,6 +49,7 @@ jobs:
         depth: false
 
 after_success:
+  - scripts/checkAndAutoMerge
   - scripts/discordTravisPost success https://discordapp.com/api/webhooks/$DISCORD_WEBHOOK_TOKENS
 
 after_failure:
