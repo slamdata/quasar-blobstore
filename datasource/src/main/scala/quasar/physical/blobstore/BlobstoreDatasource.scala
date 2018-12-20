@@ -19,41 +19,51 @@ package quasar.physical.blobstore
 import slamdata.Predef._
 import quasar.api.datasource.DatasourceType
 import quasar.api.resource.{ResourceName, ResourcePath, ResourcePathType}
-import quasar.blobstore.{Blobstore, BlobstoreStatus}
 import quasar.connector._
 import ParsableType.JsonVariant
+import quasar.blobstore.services.{GetService, ListService, PropsService, StatusService}
 import quasar.connector.datasource.LightweightDatasource
 import quasar.contrib.scalaz.MonadError_
 import quasar.qscript.InterpretedRead
 
-import cats.Applicative
+import cats.Monad
 import cats.effect.IO
 import cats.syntax.applicative._
-import fs2.{RaiseThrowable, Stream}
+import cats.syntax.functor._
+import cats.syntax.flatMap._
+import fs2.Stream
 
-class BlobstoreDatasource[F[_]: Applicative: MonadResourceErr: RaiseThrowable](
+class BlobstoreDatasource[F[_]: Monad: MonadResourceErr, P](
   val kind: DatasourceType,
   jvar: JsonVariant,
-  blobstore: Blobstore[F])
+  statusService: StatusService[F],
+  listService: ListService[F],
+  propsService: PropsService[F, P],
+  getService: GetService[F])
   extends LightweightDatasource[F, Stream[F, ?], QueryResult[F]] {
 
-  override def evaluate(iRead: InterpretedRead[ResourcePath]): F[QueryResult[F]] = {
-    val path = iRead.path
-    val bytes = blobstore.get(path)
-    val qr: QueryResult[F] = QueryResult.typed[F](ParsableType.json(jvar, false), bytes, iRead.instructions)
-    qr.pure[F]
-  }
+  private def raisePathNotFound(path: ResourcePath) =
+    MonadResourceErr[F].raiseError(ResourceError.pathNotFound(path))
+
+  override def evaluate(iRead: InterpretedRead[ResourcePath]): F[QueryResult[F]] =
+    for {
+      optBytes <- (converters.resourcePathToBlobPathK[F] andThen getService).apply(iRead.path)
+      bytes <- optBytes.map(_.pure[F]).getOrElse(raisePathNotFound(iRead.path))
+      qr = QueryResult.typed[F](ParsableType.json(jvar, false), bytes, iRead.instructions)
+    } yield qr
 
   override def pathIsResource(path: ResourcePath): F[Boolean] =
-    blobstore.isResource(path)
+    (converters.resourcePathToBlobPathK andThen propsService map { _.isDefined }).apply(path)
 
   override def prefixedChildPaths(prefixPath: ResourcePath)
       : F[Option[Stream[F, (ResourceName, ResourcePathType)]]] =
-    blobstore.list(prefixPath)
+    (converters.resourcePathToPrefixPathK andThen
+      listService.map(_.map(_.map(converters.toResourceNameType)))
+    ).apply(prefixPath)
 
   def asDsType: Datasource[F, Stream[F, ?], InterpretedRead[ResourcePath], QueryResult[F]] = this
 
-  def status: F[BlobstoreStatus] = blobstore.status
+  def status: StatusService[F] = statusService
 }
 
 object BlobstoreDatasource {

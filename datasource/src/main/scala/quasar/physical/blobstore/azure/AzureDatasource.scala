@@ -14,34 +14,54 @@
  * limitations under the License.
  */
 
-package quasar.physical.blobstore.azure
+package quasar.physical
+package blobstore
+package azure
 
+import slamdata.Predef._
 import quasar.api.datasource.DatasourceType
 import quasar.blobstore.ResourceType
-import quasar.blobstore.azure.{Azure, AzureBlobstore, AzureConfig, MaxQueueSize}
+import quasar.blobstore.azure.{converters => _, _}
+import quasar.blobstore.services.{GetService, ListService, PropsService, StatusService}
 import quasar.connector.MonadResourceErr
 import quasar.connector.ParsableType.JsonVariant
-import quasar.physical.blobstore.BlobstoreDatasource
 
-import cats.Applicative
+import cats.Monad
 import cats.effect.ConcurrentEffect
 import cats.syntax.functor._
+import com.microsoft.azure.storage.blob.models.BlobGetPropertiesResponse
 import eu.timepit.refined.auto._
-import fs2.RaiseThrowable
 
-class AzureDatasource[F[_]: Applicative: MonadResourceErr: RaiseThrowable](
-  azureBlobstore: AzureBlobstore[F],
+class AzureDatasource[
+  F[_]: Monad: MonadResourceErr](
+  statusService: StatusService[F],
+  listService: ListService[F],
+  propsService: PropsService[F, BlobGetPropertiesResponse],
+  getService: GetService[F],
   jsonVariant: JsonVariant)
-  extends BlobstoreDatasource[F](AzureDatasource.dsType, jsonVariant, azureBlobstore)
+  extends BlobstoreDatasource[F, BlobGetPropertiesResponse](
+    AzureDatasource.dsType,
+    jsonVariant,
+    statusService,
+    listService,
+    propsService,
+    getService)
 
 object AzureDatasource {
   val dsType: DatasourceType = DatasourceType("azure", 1L)
 
   def mk[F[_]: ConcurrentEffect: MonadResourceErr](cfg: AzureConfig): F[AzureDatasource[F]] =
-    Azure.mkContainerUrl[F](cfg)
-      .map(c => new AzureDatasource[F](
-        new AzureBlobstore(c, cfg.maxQueueSize.getOrElse(MaxQueueSize.default)),
-        toJsonVariant(cfg.resourceType)))
+    Azure.mkContainerUrl[F](cfg) map { c =>
+
+      new AzureDatasource[F](
+        AzureStatusService.mk(c),
+        AzureListService.mk[F](c),
+        AzurePropsService.mk[F](c) mapF
+          handlers.recoverStorageException[F, Option[BlobGetPropertiesResponse]] map
+          (_.flatten),
+        AzureGetService.mk(c, cfg.maxQueueSize.getOrElse(MaxQueueSize.default)),
+        toJsonVariant(cfg.resourceType))
+    }
 
   private def toJsonVariant(resourceType: ResourceType): JsonVariant =
     resourceType match {
