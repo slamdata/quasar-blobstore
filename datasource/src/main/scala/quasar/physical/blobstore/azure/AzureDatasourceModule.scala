@@ -52,7 +52,10 @@ object AzureDatasourceModule extends LightweightDatasourceModule {
   override def lightweightDatasource[F[_]: ConcurrentEffect: ContextShift: MonadResourceErr: Timer](
       json: Json)(
       implicit ec: ExecutionContext)
-      : F[InitializationError[Json] \/ Disposable[F, DS[F]]] =
+      : F[InitializationError[Json] \/ Disposable[F, DS[F]]] = {
+
+    val sanitizedJson = sanitizeConfig(json)
+
     json.as[AzureConfig].result match {
       case Right(cfg) =>
         val r = for {
@@ -62,15 +65,15 @@ object AzureDatasourceModule extends LightweightDatasourceModule {
             case BlobstoreStatus.Ok => Disposable(ds.asDsType, Applicative[F].unit).right
             case BlobstoreStatus.NoAccess =>
               DatasourceError
-                .accessDenied[Json, InitializationError[Json]](kind, json, "Access to blobstore denied")
+                .accessDenied[Json, InitializationError[Json]](kind, sanitizedJson, "Access to blobstore denied")
                 .left
             case BlobstoreStatus.NotFound =>
               DatasourceError
-                .invalidConfiguration[Json, InitializationError[Json]](kind, json, NonEmptyList("Blobstore not found"))
+                .invalidConfiguration[Json, InitializationError[Json]](kind, sanitizedJson, NonEmptyList("Blobstore not found"))
                 .left
             case BlobstoreStatus.NotOk(msg) =>
               DatasourceError
-                .invalidConfiguration[Json, InitializationError[Json]](kind, json, NonEmptyList(msg))
+                .invalidConfiguration[Json, InitializationError[Json]](kind, sanitizedJson, NonEmptyList(msg))
                 .left
           }
         } yield res
@@ -78,24 +81,25 @@ object AzureDatasourceModule extends LightweightDatasourceModule {
         ApplicativeError[F, Throwable].handleError(r) {
           case _: MalformedURLException =>
             DatasourceError
-              .invalidConfiguration[Json, InitializationError[Json]](kind, json, NonEmptyList("Invalid storage url"))
+              .invalidConfiguration[Json, InitializationError[Json]](kind, sanitizedJson, NonEmptyList("Invalid storage url"))
               .left
           case _: UnknownHostException =>
             DatasourceError
-              .invalidConfiguration[Json, InitializationError[Json]](kind, json, NonEmptyList("Non-existing storage url"))
+              .invalidConfiguration[Json, InitializationError[Json]](kind, sanitizedJson, NonEmptyList("Non-existing storage url"))
               .left
           case NonFatal(t) =>
             DatasourceError
-              .invalidConfiguration[Json, InitializationError[Json]](kind, json, NonEmptyList(t.getMessage))
+              .invalidConfiguration[Json, InitializationError[Json]](kind, sanitizedJson, NonEmptyList(t.getMessage))
               .left
         }
 
       case Left((msg, _)) =>
         DatasourceError
-          .invalidConfiguration[Json, InitializationError[Json]](kind, json, NonEmptyList(msg))
+          .invalidConfiguration[Json, InitializationError[Json]](kind, sanitizedJson, NonEmptyList(msg))
           .left.pure[F]
 
     }
+  }
 
   override def sanitizeConfig(config: Json): Json = {
     val sanitized = for {
