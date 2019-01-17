@@ -16,17 +16,13 @@
 
 package quasar.physical.blobstore.azure
 
-import slamdata.Predef.None
+import slamdata.Predef.Option
 import quasar.blobstore.azure._
 import quasar.physical.blobstore.ResourceType
 
-object Fixtures {
-
-  val AccountNameSlamdata = AccountName("slamdata")
-  val StorageUrlSlamdata = Azure.mkStdStorageUrl(AccountNameSlamdata)
-  val InvalidCredentials = AzureCredentials(AccountName("invalid"), AccountKey("invalid"))
-
-  val PublicConfig =
-    AzureConfig(ContainerName("test"), None, StorageUrlSlamdata, None, ResourceType.LdJson)
-
-}
+final case class AzureConfig(
+    override val containerName: ContainerName,
+    override val credentials: Option[AzureCredentials],
+    override val storageUrl: StorageUrl,
+    override val maxQueueSize: Option[MaxQueueSize],
+    resourceType: ResourceType) extends Config

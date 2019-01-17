@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package quasar.blobstore
+package quasar.physical.blobstore
 
 import slamdata.Predef.{Product, Serializable, String}
 

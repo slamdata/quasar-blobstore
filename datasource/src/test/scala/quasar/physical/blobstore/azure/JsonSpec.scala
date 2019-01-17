@@ -18,7 +18,7 @@ package quasar.physical.blobstore.azure
 
 import slamdata.Predef._
 import quasar.blobstore.azure._, configArbitrary._, json._
-import quasar.blobstore.ResourceType
+import quasar.physical.blobstore.ResourceType
 
 import argonaut._, Argonaut._
 import eu.timepit.refined.auto._
