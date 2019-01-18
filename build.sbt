@@ -17,6 +17,7 @@ val quasarVersion = IO.read(file("./quasar-version")).trim
 
 val argonautRefinedVersion = "1.2.0-M8"
 val azureVersion = "10.3.0"
+val blobstoreVersion = "0.0.1-f8d76d5"
 val catsEffectVersion = "1.0.0"
 val fs2Version = "1.0.0"
 val nettyVersion = "4.1.28.Final"
@@ -43,6 +44,7 @@ lazy val core = project
       * `datasourceQuasarVersion`.
       */
     datasourceDependencies ++= Seq(
+      "com.slamdata"               %% "async-blobstore-azure"      % blobstoreVersion,
       "com.codecommit"             %% "shims"                      % shimsVersion,
       "com.github.alexarchambault" %% "argonaut-refined_6.2"       % argonautRefinedVersion,
       "com.microsoft.azure"        %  "azure-storage-blob"         % azureVersion,
