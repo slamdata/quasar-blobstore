@@ -22,7 +22,7 @@ val fs2Version = "1.0.0"
 val nettyVersion = "4.1.28.Final"
 val refinedVersion = "0.8.5"
 val rxjavaVersion = "2.2.2"
-val shimsVersion = "1.2.1"
+val shimsVersion = "1.7.0"
 val slf4jVersion = "1.7.25"
 val specsVersion = "4.3.3"
 
