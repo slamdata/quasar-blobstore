@@ -33,7 +33,6 @@ import cats.syntax.functor._
 import org.specs2.matcher.MatchResult
 
 abstract class BlobstoreDatasourceSpec[F[_]: Effect] extends EffectfulQSpec[F] {
-  import azure.AzureDatasourceModule.DS
 
   val F = Effect[F]
 

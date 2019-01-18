@@ -8,27 +8,41 @@ scmInfo in ThisBuild := Some(ScmInfo(
   url("https://github.com/slamdata/quasar-datasource-azure"),
   "scm:git@github.com:slamdata/quasar-datasource-azure.git"))
 
+// Include to also publish a project's tests
+lazy val publishTestsSettings = Seq(
+  publishArtifact in (Test, packageBin) := true)
+
 lazy val root = project
   .in(file("."))
   .settings(noPublishSettings)
-  .aggregate(core)
+  .aggregate(core, azure)
 
 val quasarVersion = IO.read(file("./quasar-version")).trim
 
 val argonautRefinedVersion = "1.2.0-M8"
-val azureVersion = "10.3.0"
-val blobstoreVersion = "0.0.1-f8d76d5"
-val catsEffectVersion = "1.0.0"
-val fs2Version = "1.0.0"
-val nettyVersion = "4.1.28.Final"
+val asyncBlobstoreVersion = "0.0.1-112c58c"
 val refinedVersion = "0.8.5"
-val rxjavaVersion = "2.2.2"
-val shimsVersion = "1.2.1"
 val slf4jVersion = "1.7.25"
 val specsVersion = "4.3.3"
 
 lazy val core = project
-  .in(file("datasource"))
+  .in(file("core"))
+  .settings(addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.2.4"))
+  .settings(publishTestsSettings)
+  .settings(
+    name := "quasar-datasource-blobstore-core",
+    libraryDependencies ++= Seq(
+      "com.slamdata" %% "async-blobstore-core" % asyncBlobstoreVersion,
+      "com.slamdata" %% "quasar-connector" % quasarVersion,
+      "com.slamdata" %% "quasar-connector" % quasarVersion % Test classifier "tests",
+      "com.slamdata" %% "quasar-foundation" % quasarVersion % Test classifier "tests",
+      "org.specs2" %% "specs2-core" % specsVersion % Test,
+      "org.specs2" %% "specs2-scalaz" % specsVersion % Test,
+      "org.specs2" %% "specs2-scalacheck" % specsVersion % Test))
+
+lazy val azure = project
+  .in(file("azure"))
+  .dependsOn(core % "compile->compile;test->test")
   .settings(addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.2.4"))
   .settings(
     name := "quasar-datasource-azure",
@@ -44,22 +58,9 @@ lazy val core = project
       * `datasourceQuasarVersion`.
       */
     datasourceDependencies ++= Seq(
-      "com.slamdata"               %% "async-blobstore-azure"      % blobstoreVersion,
-      "com.codecommit"             %% "shims"                      % shimsVersion,
-      "com.github.alexarchambault" %% "argonaut-refined_6.2"       % argonautRefinedVersion,
-      "com.microsoft.azure"        %  "azure-storage-blob"         % azureVersion,
-      "eu.timepit"                 %% "refined-scalacheck"         % refinedVersion,
-      // netty-all isn't strictly necessary but takes advantage of native libs.
-      // Azure doesn't pull in libs like netty-transport-native-kqueue,
-      // netty-transport-native-unix-common and netty-transport-native-epoll.
-      // Keep nettyVersion in sync with the version that Azure pulls in.
-      "io.netty"             %  "netty-all"         % nettyVersion,
-      "io.reactivex.rxjava2" %  "rxjava"            % rxjavaVersion,
-      "org.typelevel"        %% "cats-effect"       % catsEffectVersion,
-      "com.slamdata"         %% "quasar-foundation" % quasarVersion % Test classifier "tests",
-      "org.slf4j"            %  "slf4j-log4j12"     % slf4jVersion % Test,
-      "org.specs2"           %% "specs2-core"       % specsVersion % Test,
-      "org.specs2"           %% "specs2-scalaz"     % specsVersion % Test,
-      "org.specs2"           %% "specs2-scalacheck" % specsVersion % Test
-    ))
+      "com.github.alexarchambault" %% "argonaut-refined_6.2" % argonautRefinedVersion,
+      "com.slamdata" %% "async-blobstore-azure" % asyncBlobstoreVersion,
+      "eu.timepit" %% "refined-scalacheck" % refinedVersion,
+      "org.slf4j" % "slf4j-log4j12" % slf4jVersion % Test))
+
   .enablePlugins(AutomateHeaderPlugin, DatasourcePlugin)

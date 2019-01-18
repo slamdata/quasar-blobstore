@@ -61,7 +61,7 @@ class BlobstoreDatasource[F[_]: Monad: MonadResourceErr, P](
       listService.map(_.map(_.map(converters.toResourceNameType)))
     ).apply(prefixPath)
 
-  def asDsType: Datasource[F, Stream[F, ?], InterpretedRead[ResourcePath], QueryResult[F]] = this
+  def asDsType: DS[F] = this
 
   def status: StatusService[F] = statusService
 }

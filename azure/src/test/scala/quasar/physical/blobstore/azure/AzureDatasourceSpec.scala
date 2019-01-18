@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 
-package quasar.physical.blobstore.azure
+package quasar.physical.blobstore
+package azure
 
 import quasar.physical.blobstore.{BlobstoreDatasource, BlobstoreDatasourceSpec}
 import BlobstoreDatasource._
@@ -22,7 +23,6 @@ import BlobstoreDatasource._
 import cats.effect.IO
 
 abstract class AzureDatasourceSpec extends BlobstoreDatasourceSpec[IO] {
-  import AzureDatasourceModule.DS
 
   val cfg: AzureConfig
 
