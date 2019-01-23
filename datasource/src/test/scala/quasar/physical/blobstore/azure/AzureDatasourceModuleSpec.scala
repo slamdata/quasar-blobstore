@@ -18,9 +18,9 @@ package quasar.physical.blobstore.azure
 
 import slamdata.Predef._
 import quasar.api.datasource.DatasourceError
-import quasar.blobstore.ResourceType
 import quasar.blobstore.azure._
 import quasar.physical.blobstore.BlobstoreDatasource._
+import quasar.physical.blobstore.ResourceType
 
 import scala.concurrent.ExecutionContext
 

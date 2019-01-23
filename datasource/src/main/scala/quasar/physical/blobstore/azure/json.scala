@@ -14,7 +14,9 @@
  * limitations under the License.
  */
 
-package quasar.blobstore.azure
+package quasar.physical.blobstore.azure
+
+import quasar.blobstore.azure._
 
 import argonaut._, Argonaut._, ArgonautRefined._
 

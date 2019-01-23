@@ -16,9 +16,9 @@
 
 package quasar.physical.blobstore.azure
 
-import quasar.blobstore.azure._
 import slamdata.Predef._
-import quasar.blobstore.ResourceType
+import quasar.blobstore.azure._
+import quasar.physical.blobstore.ResourceType
 
 import org.scalacheck._, Arbitrary._
 import eu.timepit.refined.api.Refined

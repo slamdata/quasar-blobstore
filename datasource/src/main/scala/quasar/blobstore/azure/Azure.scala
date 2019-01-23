@@ -35,7 +35,7 @@ object Azure {
       case Some(c) => new SharedKeyCredentials(c.accountName.value, c.accountKey.value)
     }
 
-  def mkContainerUrl[F[_]](cfg: AzureConfig)(implicit F: Sync[F]): F[ContainerURL] =
+  def mkContainerUrl[F[_]](cfg: Config)(implicit F: Sync[F]): F[ContainerURL] =
     F.catchNonFatal(new URL(cfg.storageUrl.value)) map { url =>
       val serviceUrl = new ServiceURL(
         url,

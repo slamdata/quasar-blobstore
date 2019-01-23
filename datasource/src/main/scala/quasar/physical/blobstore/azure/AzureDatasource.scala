@@ -20,11 +20,11 @@ package azure
 
 import slamdata.Predef._
 import quasar.api.datasource.DatasourceType
-import quasar.blobstore.ResourceType
 import quasar.blobstore.azure.{converters => _, _}
 import quasar.blobstore.services.{GetService, ListService, PropsService, StatusService}
 import quasar.connector.MonadResourceErr
 import quasar.connector.ParsableType.JsonVariant
+import quasar.physical.blobstore.ResourceType
 
 import cats.Monad
 import cats.effect.ConcurrentEffect

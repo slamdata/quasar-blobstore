@@ -16,7 +16,6 @@
 
 package quasar.physical.blobstore.azure
 
-import quasar.blobstore.azure._
 import quasar.physical.blobstore.{BlobstoreDatasource, BlobstoreDatasourceSpec}
 import BlobstoreDatasource._
 
