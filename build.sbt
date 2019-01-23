@@ -17,8 +17,8 @@ val quasarVersion = IO.read(file("./quasar-version")).trim
 
 val argonautRefinedVersion = "1.2.0-M8"
 val azureVersion = "10.3.0"
-val catsEffectVersion = "1.0.0"
-val fs2Version = "1.0.0"
+val catsEffectVersion = "1.1.0"
+val fs2Version = "1.0.2"
 val nettyVersion = "4.1.28.Final"
 val refinedVersion = "0.8.5"
 val rxjavaVersion = "2.2.2"
