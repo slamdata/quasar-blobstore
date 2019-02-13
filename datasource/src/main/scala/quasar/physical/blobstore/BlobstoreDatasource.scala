@@ -49,7 +49,7 @@ class BlobstoreDatasource[F[_]: Monad: MonadResourceErr, P](
     for {
       optBytes <- (converters.resourcePathToBlobPathK[F] andThen getService).apply(iRead.path)
       bytes <- optBytes.map(_.pure[F]).getOrElse(raisePathNotFound(iRead.path))
-      qr = QueryResult.typed[F](ParsableType.json(jvar, false), bytes, iRead.instructions)
+      qr = QueryResult.typed[F](ParsableType.json(jvar, false), bytes, iRead.stages)
     } yield qr
 
   override def pathIsResource(path: ResourcePath): F[Boolean] =
