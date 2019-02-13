@@ -17,7 +17,7 @@
 package quasar.physical.blobstore
 
 import slamdata.Predef._
-import quasar.EffectfulQSpec
+import quasar.{EffectfulQSpec, ScalarStages}
 import quasar.api.resource.{ResourceName, ResourcePath, ResourcePathType}
 import quasar.connector.{QueryResult, ResourceError}
 import quasar.qscript.InterpretedRead
@@ -145,7 +145,7 @@ abstract class BlobstoreDatasourceSpec[F[_]: Effect] extends EffectfulQSpec[F] {
     }
   }
 
-  def iRead[A](path: A): InterpretedRead[A] = InterpretedRead(path, List())
+  def iRead[A](path: A): InterpretedRead[A] = InterpretedRead(path, ScalarStages.Id)
 
   def assertPathIsResource(
       datasource: F[DS[F]],
@@ -187,7 +187,7 @@ abstract class BlobstoreDatasourceSpec[F[_]: Effect] extends EffectfulQSpec[F] {
       expected: Array[Byte]): F[MatchResult[Any]] =
     datasource flatMap { ds =>
       ds.evaluate(iRead(path)) flatMap {
-        case QueryResult.Typed(_, data, List()) =>
+        case QueryResult.Typed(_, data, ScalarStages.Id) =>
           data.compile.to[Array].map(_ must_=== expected)
 
         case _ =>
