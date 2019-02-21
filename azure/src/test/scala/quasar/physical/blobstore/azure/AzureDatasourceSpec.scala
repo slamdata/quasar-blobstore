@@ -14,21 +14,17 @@
  * limitations under the License.
  */
 
-package quasar.blobstore
+package quasar.physical.blobstore
+package azure
 
-import slamdata.Predef.{List, String}
+import quasar.physical.blobstore.{BlobstoreDatasource, BlobstoreDatasourceSpec}
+import BlobstoreDatasource._
 
-object paths {
+import cats.effect.IO
 
-  final case class PathElem(value: String)
+abstract class AzureDatasourceSpec extends BlobstoreDatasourceSpec[IO] {
 
-  type Path = List[PathElem]
+  val cfg: AzureConfig
 
-
-  trait BlobstorePath {
-    def path: Path
-  }
-
-  final case class PrefixPath(path: Path) extends BlobstorePath
-  final case class BlobPath(path: Path) extends BlobstorePath
+  override def datasource: IO[DS[IO]] = AzureDatasource.mk[IO](cfg)
 }
