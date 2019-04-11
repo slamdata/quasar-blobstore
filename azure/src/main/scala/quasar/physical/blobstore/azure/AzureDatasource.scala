@@ -27,7 +27,7 @@ import quasar.connector.ParsableType.JsonVariant
 import quasar.physical.blobstore.ResourceType
 
 import cats.Monad
-import cats.effect.ConcurrentEffect
+import cats.effect.{ConcurrentEffect, ContextShift}
 import cats.syntax.functor._
 import com.microsoft.azure.storage.blob.models.BlobGetPropertiesResponse
 import eu.timepit.refined.auto._
@@ -50,7 +50,7 @@ class AzureDatasource[
 object AzureDatasource {
   val dsType: DatasourceType = DatasourceType("azure", 1L)
 
-  def mk[F[_]: ConcurrentEffect: MonadResourceErr](cfg: AzureConfig): F[AzureDatasource[F]] =
+  def mk[F[_]: ConcurrentEffect: ContextShift: MonadResourceErr](cfg: AzureConfig): F[AzureDatasource[F]] =
     Azure.mkContainerUrl[F](cfg) map { c =>
 
       new AzureDatasource[F](

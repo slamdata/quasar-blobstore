@@ -20,7 +20,8 @@ lazy val root = project
 val quasarVersion = IO.read(file("./quasar-version")).trim
 
 val argonautRefinedVersion = "1.2.0-M8"
-val asyncBlobstoreVersion = "0.0.1"
+val asyncBlobstoreVersion = "0.0.1-c3cf34e"
+
 val refinedVersion = "0.8.5"
 val slf4jVersion = "1.7.25"
 val specsVersion = "4.3.3"
