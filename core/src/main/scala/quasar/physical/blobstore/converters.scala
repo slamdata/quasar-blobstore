@@ -45,10 +45,10 @@ object converters {
   def blobPathToResourcePath(path: BlobPath): ResourcePath =
     ResourcePath.resourceNamesIso(IList.fromList(path.path.map(e => ResourceName(e.value))))
 
-  def toResourceNameType(p: BlobstorePath): (ResourceName, ResourcePathType) =
+  def toResourceNameType(p: BlobstorePath): (ResourceName, ResourcePathType.Physical) =
     (toResourceName(p).getOrElse(ResourceName("")), toResourceType(p))
 
-  def toResourceType(p: BlobstorePath): ResourcePathType =
+  def toResourceType(p: BlobstorePath): ResourcePathType.Physical =
     p match {
       case BlobPath(_) => ResourcePathType.LeafResource
       case PrefixPath(_) => ResourcePathType.Prefix

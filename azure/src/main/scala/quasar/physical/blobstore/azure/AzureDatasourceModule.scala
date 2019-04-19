@@ -20,10 +20,9 @@ import slamdata.Predef._
 import quasar.Disposable
 import quasar.api.datasource.DatasourceError.InitializationError
 import quasar.api.datasource.{DatasourceError, DatasourceType}
-import quasar.blobstore.azure._
-import json._
+import quasar.blobstore.azure._, json._
 import quasar.blobstore.BlobstoreStatus
-import quasar.connector.{LightweightDatasourceModule, MonadResourceErr}
+import quasar.connector.{DS, LightweightDatasourceModule, MonadResourceErr}
 
 import java.net.{MalformedURLException, UnknownHostException}
 import scala.concurrent.ExecutionContext
