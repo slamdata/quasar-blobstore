@@ -19,7 +19,7 @@ package quasar.physical.blobstore
 import slamdata.Predef._
 import quasar.{EffectfulQSpec, ScalarStages}
 import quasar.api.resource.{ResourceName, ResourcePath, ResourcePathType}
-import quasar.connector.{DS, QueryResult, ResourceError}
+import quasar.connector.{LightweightDatasourceModule, QueryResult, ResourceError}, LightweightDatasourceModule.DS
 import quasar.qscript.InterpretedRead
 
 import java.nio.charset.StandardCharsets

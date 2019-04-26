@@ -22,7 +22,7 @@ import quasar.api.resource.{ResourceName, ResourcePath, ResourcePathType}
 import quasar.connector._
 import ParsableType.JsonVariant
 import quasar.blobstore.services.{GetService, ListService, PropsService, StatusService}
-import quasar.connector.datasource.LightweightDatasource
+import quasar.connector.datasource.LightweightDatasource, LightweightDatasourceModule.DS
 import quasar.contrib.scalaz.MonadError_
 import quasar.qscript.InterpretedRead
 

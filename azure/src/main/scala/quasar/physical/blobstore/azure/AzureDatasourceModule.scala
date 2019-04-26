@@ -22,7 +22,7 @@ import quasar.api.datasource.DatasourceError.InitializationError
 import quasar.api.datasource.{DatasourceError, DatasourceType}
 import quasar.blobstore.azure._, json._
 import quasar.blobstore.BlobstoreStatus
-import quasar.connector.{DS, LightweightDatasourceModule, MonadResourceErr}
+import quasar.connector.{LightweightDatasourceModule, MonadResourceErr}, LightweightDatasourceModule.DS
 
 import java.net.{MalformedURLException, UnknownHostException}
 import scala.concurrent.ExecutionContext

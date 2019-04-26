@@ -17,7 +17,7 @@
 package quasar.physical.blobstore
 package azure
 
-import quasar.connector.DS
+import quasar.connector.LightweightDatasourceModule.DS
 import quasar.physical.blobstore.BlobstoreDatasource._
 
 import cats.effect.IO
