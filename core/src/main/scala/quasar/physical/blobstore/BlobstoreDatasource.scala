@@ -22,7 +22,7 @@ import quasar.api.resource.{ResourceName, ResourcePath, ResourcePathType}
 import quasar.connector._
 import ParsableType.JsonVariant
 import quasar.blobstore.services.{GetService, ListService, PropsService, StatusService}
-import quasar.connector.datasource.LightweightDatasource
+import quasar.connector.datasource.LightweightDatasource, LightweightDatasourceModule.DS
 import quasar.contrib.scalaz.MonadError_
 import quasar.qscript.InterpretedRead
 
@@ -56,7 +56,7 @@ class BlobstoreDatasource[F[_]: Monad: MonadResourceErr, P](
     (converters.resourcePathToBlobPathK andThen propsService map { _.isDefined }).apply(path)
 
   override def prefixedChildPaths(prefixPath: ResourcePath)
-      : F[Option[Stream[F, (ResourceName, ResourcePathType)]]] =
+      : F[Option[Stream[F, (ResourceName, ResourcePathType.Physical)]]] =
     (converters.resourcePathToPrefixPathK andThen
       listService.map(_.map(_.map(converters.toResourceNameType)))
     ).apply(prefixPath)
