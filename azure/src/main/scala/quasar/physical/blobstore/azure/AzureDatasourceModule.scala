@@ -17,7 +17,6 @@
 package quasar.physical.blobstore.azure
 
 import slamdata.Predef._
-import quasar.Disposable
 import quasar.api.datasource.DatasourceError.InitializationError
 import quasar.api.datasource.{DatasourceError, DatasourceType}
 import quasar.blobstore.azure._, json._
@@ -30,13 +29,13 @@ import scala.util.control.NonFatal
 
 import argonaut.Json
 import argonaut.ArgonautScalaz._
-import cats.{Applicative, ApplicativeError}
-import cats.effect.{ConcurrentEffect, ContextShift, Timer}
+import cats.ApplicativeError
+import cats.effect.{ConcurrentEffect, ContextShift, Resource, Timer}
 import cats.syntax.applicative._
+import cats.syntax.either._
 import cats.syntax.flatMap._
 import cats.syntax.functor._
-import scalaz.{NonEmptyList, \/}
-import scalaz.syntax.either._
+import scalaz.NonEmptyList
 import scalaz.syntax.equal._
 
 object AzureDatasourceModule extends LightweightDatasourceModule {
@@ -51,7 +50,7 @@ object AzureDatasourceModule extends LightweightDatasourceModule {
   override def lightweightDatasource[F[_]: ConcurrentEffect: ContextShift: MonadResourceErr: Timer](
       json: Json)(
       implicit ec: ExecutionContext)
-      : F[InitializationError[Json] \/ Disposable[F, DS[F]]] = {
+      : Resource[F, Either[InitializationError[Json], DS[F]]] = {
 
     val sanitizedJson = sanitizeConfig(json)
 
@@ -61,42 +60,42 @@ object AzureDatasourceModule extends LightweightDatasourceModule {
           ds <- AzureDatasource.mk(cfg)
           l <- ds.status
           res = l match {
-            case BlobstoreStatus.Ok => Disposable(ds.asDsType, Applicative[F].unit).right
+            case BlobstoreStatus.Ok =>
+              Right(ds.asDsType)
+
             case BlobstoreStatus.NoAccess =>
-              DatasourceError
-                .accessDenied[Json, InitializationError[Json]](kind, sanitizedJson, "Access to blobstore denied")
-                .left
+              Left(DatasourceError
+                .accessDenied[Json, InitializationError[Json]](kind, sanitizedJson, "Access to blobstore denied"))
+
             case BlobstoreStatus.NotFound =>
-              DatasourceError
-                .invalidConfiguration[Json, InitializationError[Json]](kind, sanitizedJson, NonEmptyList("Blobstore not found"))
-                .left
+              Left(DatasourceError
+                .invalidConfiguration[Json, InitializationError[Json]](kind, sanitizedJson, NonEmptyList("Blobstore not found")))
+
             case BlobstoreStatus.NotOk(msg) =>
-              DatasourceError
-                .invalidConfiguration[Json, InitializationError[Json]](kind, sanitizedJson, NonEmptyList(msg))
-                .left
+              Left(DatasourceError
+                .invalidConfiguration[Json, InitializationError[Json]](kind, sanitizedJson, NonEmptyList(msg)))
           }
         } yield res
 
-        ApplicativeError[F, Throwable].handleError(r) {
+        Resource.liftF(ApplicativeError[F, Throwable].handleError(r) {
           case _: MalformedURLException =>
-            DatasourceError
-              .invalidConfiguration[Json, InitializationError[Json]](kind, sanitizedJson, NonEmptyList("Invalid storage url"))
-              .left
+            Left(DatasourceError
+              .invalidConfiguration[Json, InitializationError[Json]](kind, sanitizedJson, NonEmptyList("Invalid storage url")))
+
           case _: UnknownHostException =>
-            DatasourceError
-              .invalidConfiguration[Json, InitializationError[Json]](kind, sanitizedJson, NonEmptyList("Non-existing storage url"))
-              .left
+            Left(DatasourceError
+              .invalidConfiguration[Json, InitializationError[Json]](kind, sanitizedJson, NonEmptyList("Non-existing storage url")))
+
           case NonFatal(t) =>
-            DatasourceError
-              .invalidConfiguration[Json, InitializationError[Json]](kind, sanitizedJson, NonEmptyList(t.getMessage))
-              .left
-        }
+            Left(DatasourceError
+              .invalidConfiguration[Json, InitializationError[Json]](kind, sanitizedJson, NonEmptyList(t.getMessage)))
+        })
 
       case Left((msg, _)) =>
         DatasourceError
           .invalidConfiguration[Json, InitializationError[Json]](kind, sanitizedJson, NonEmptyList(msg))
-          .left.pure[F]
-
+          .asLeft[DS[F]]
+          .pure[Resource[F, ?]]
     }
   }
 

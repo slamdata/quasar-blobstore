@@ -24,9 +24,10 @@ import quasar.physical.blobstore.ResourceType
 
 import scala.concurrent.ExecutionContext
 
-import argonaut._
-import Argonaut._
+import argonaut._, Argonaut._
 import cats.effect.{ContextShift, IO, Timer}
+import cats.instances.either._
+import cats.syntax.functor._
 import eu.timepit.refined.auto._
 import org.specs2.mutable.Specification
 
@@ -42,7 +43,9 @@ class AzureDatasourceModuleSpec extends Specification {
       "accountKey" -> Json.jString(cred.accountKey.value))
 
   private def init(j: Json) =
-    AzureDatasourceModule.lightweightDatasource[IO](j).unsafeRunSync.toEither
+    AzureDatasourceModule.lightweightDatasource[IO](j)
+      .use(r => IO.pure(r.void))
+      .unsafeRunSync()
 
   private def cfgToJson(cfg: AzureConfig, stripNulls: Boolean = true): Json = {
     val js = Json.obj(
