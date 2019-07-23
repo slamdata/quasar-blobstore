@@ -24,11 +24,11 @@ val asyncBlobstoreVersion = "0.1.0"
 
 val refinedVersion = "0.8.5"
 val slf4jVersion = "1.7.25"
-val specsVersion = "4.5.1"
+val specsVersion = "4.6.0"
 
 lazy val core = project
   .in(file("core"))
-  .settings(addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.0"))
+  .settings(addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1"))
   .settings(publishTestsSettings)
   .settings(
     name := "quasar-datasource-blobstore-core",
@@ -44,7 +44,7 @@ lazy val core = project
 lazy val azure = project
   .in(file("azure"))
   .dependsOn(core % "compile->compile;test->test")
-  .settings(addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.0"))
+  .settings(addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1"))
   .settings(
     name := "quasar-datasource-azure",
 
