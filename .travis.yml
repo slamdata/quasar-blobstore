@@ -36,6 +36,7 @@ jobs:
     - stage: test
       script:
         - set -e
+        - $SBT ++$TRAVIS_SCALA_VERSION datasourceAssemblePlugin
         - $SBT ++$TRAVIS_SCALA_VERSION test
 
     - stage: publish
