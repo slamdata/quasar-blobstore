@@ -12,7 +12,7 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- */
+
 
 package quasar.physical.blobstore
 
@@ -44,3 +44,4 @@ object ResourceType {
   implicit val show: Show[ResourceType] =
     Show.showFromToString
 }
+ */

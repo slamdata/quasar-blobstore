@@ -18,7 +18,7 @@ package quasar.physical.blobstore.azure
 
 import slamdata.Predef._
 import quasar.blobstore.azure._, configArbitrary._, json._
-import quasar.physical.blobstore.ResourceType
+import quasar.connector.ParsableType, ParsableType._
 
 import argonaut._, Argonaut._
 import eu.timepit.refined.auto._
@@ -47,7 +47,7 @@ class JsonSpec extends Specification with ScalaCheck {
           Some(AzureCredentials(AccountName("myname"), AccountKey("mykey"))),
           Azure.mkStdStorageUrl(AccountName("myaccount")),
           Some(MaxQueueSize(10)),
-          ResourceType.LdJson))
+          ParsableType.json(JsonVariant.LineDelimited, false)))
     }
 
     "succeeds reading config without credentials" >> {
@@ -67,7 +67,7 @@ class JsonSpec extends Specification with ScalaCheck {
           None,
           Azure.mkStdStorageUrl(AccountName("myaccount")),
           Some(MaxQueueSize(10)),
-          ResourceType.Json))
+          ParsableType.json(JsonVariant.ArrayWrapped, false)))
     }
 
     "fails reading config with incomplete credentials" >> {

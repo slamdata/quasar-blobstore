@@ -18,7 +18,7 @@ package quasar.physical.blobstore.azure
 
 import slamdata.Predef._
 import quasar.blobstore.azure._
-import quasar.physical.blobstore.ResourceType
+import quasar.connector.ParsableType, ParsableType._
 
 import org.scalacheck._, Arbitrary._
 import eu.timepit.refined.api.Refined
@@ -40,7 +40,9 @@ object configArbitrary {
     cred <- Gen.option(genCredentials)
     s <- arbitrary[String].map(StorageUrl)
     qs <- Gen.option(genMaxQueueSize)
-    rt <- Gen.oneOf(ResourceType.Json, ResourceType.LdJson)
+    rt <- Gen.oneOf(
+      ParsableType.json(JsonVariant.LineDelimited, false),
+      ParsableType.json(JsonVariant.ArrayWrapped, false))
   } yield AzureConfig(c, cred, s, qs, rt)
 
   implicit val arbAzureConfig: Arbitrary[AzureConfig] =

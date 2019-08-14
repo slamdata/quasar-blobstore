@@ -16,7 +16,10 @@
 
 package quasar.physical.blobstore.azure
 
+import slamdata.Predef._
+
 import quasar.blobstore.azure._
+import quasar.connector.ParsableType, ParsableType._
 
 import argonaut._, Argonaut._, ArgonautRefined._
 
@@ -36,6 +39,25 @@ object json {
   implicit val codecCredentials: CodecJson[AzureCredentials] =
     casecodec2(AzureCredentials.apply, AzureCredentials.unapply)("accountName", "accountKey")
 
-  implicit val codecConfig: CodecJson[AzureConfig] =
-    casecodec5(AzureConfig.apply, AzureConfig.unapply)("container", "credentials", "storageUrl", "maxQueueSize", "resourceType")
+  val legacyResourceTypeDecodeJson: DecodeJson[ParsableType] = DecodeJson( c => c.as[String].flatMap {
+    case "ldjson" => DecodeResult.ok(ParsableType.json(JsonVariant.LineDelimited, false))
+    case "json" => DecodeResult.ok(ParsableType.json(JsonVariant.ArrayWrapped, false))
+    case _ => DecodeResult.fail("Unrecognized ResourceType", c.history)
+  })
+
+  implicit val codecConfig: CodecJson[AzureConfig] = CodecJson({ (c: AzureConfig) =>
+    ("container" := c.containerName) ->:
+    ("credentials" := c.credentials) ->:
+    ("storageUrl" := c.storageUrl) ->:
+    ("maxQueueSize" := c.maxQueueSize) ->:
+    ("format" := c.format) ->:
+    jEmptyObject
+  }, (c => for {
+    container <- (c --\ "container").as[ContainerName]
+    credentials <- (c --\ "credentials").as[Option[AzureCredentials]]
+    storageUrl <- (c --\ "storageUrl").as[StorageUrl]
+    maxQueueSize <- (c --\ "maxQueueSize").as[Option[MaxQueueSize]]
+    format <- (c --\ "format").as[ParsableType] ||| (c --\ "resourceType").as(legacyResourceTypeDecodeJson)
+  } yield AzureConfig(container, credentials, storageUrl, maxQueueSize, format)))
+
 }
