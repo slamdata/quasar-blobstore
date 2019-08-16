@@ -22,7 +22,7 @@ import slamdata.Predef._
 import quasar.api.datasource.DatasourceType
 import quasar.blobstore.azure.{converters => _, _}
 import quasar.blobstore.services.{GetService, ListService, PropsService, StatusService}
-import quasar.connector.{MonadResourceErr, ParsableType}
+import quasar.connector.{MonadResourceErr, DataFormat}
 
 import cats.Monad
 import cats.effect.{ConcurrentEffect, ContextShift}
@@ -36,7 +36,7 @@ class AzureDatasource[
   listService: ListService[F],
   propsService: PropsService[F, BlobGetPropertiesResponse],
   getService: GetService[F],
-  format: ParsableType)
+  format: DataFormat)
   extends BlobstoreDatasource[F, BlobGetPropertiesResponse](
     AzureDatasource.dsType,
     format,

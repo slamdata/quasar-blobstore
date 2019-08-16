@@ -34,7 +34,7 @@ import fs2.Stream
 
 class BlobstoreDatasource[F[_]: Monad: MonadResourceErr, P](
   val kind: DatasourceType,
-  format: ParsableType,
+  format: DataFormat,
   statusService: StatusService[F],
   listService: ListService[F],
   propsService: PropsService[F, P],
