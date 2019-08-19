@@ -19,7 +19,7 @@ package quasar.physical.blobstore.azure
 import slamdata.Predef._
 
 import quasar.blobstore.azure._
-import quasar.connector.DataFormat, DataFormat._
+import quasar.connector.{CompressionScheme, DataFormat}, DataFormat._
 
 import argonaut._, Argonaut._, ArgonautRefined._
 
@@ -39,6 +39,20 @@ object json {
   implicit val codecCredentials: CodecJson[AzureCredentials] =
     casecodec2(AzureCredentials.apply, AzureCredentials.unapply)("accountName", "accountKey")
 
+  val legacyDecodeFlatFormat: DecodeJson[DataFormat] = DecodeJson { c => c.as[String].flatMap {
+    case "json" => DecodeResult.ok(DataFormat.json)
+    case "ldjson" => DecodeResult.ok(DataFormat.ldjson)
+    case other => DecodeResult.fail(s"Unrecognized parsing format: $other", c.history)
+  }}
+
+  val legacyDecodeDataFormat: DecodeJson[DataFormat] = DecodeJson( c => for {
+    parsing <- (c --\ "resourceType").as(legacyDecodeFlatFormat)
+    compressionScheme <- (c --\ "compressionScheme").as[Option[CompressionScheme]]
+  } yield compressionScheme match {
+    case None => parsing
+    case Some(_) => DataFormat.compressed(parsing)
+  })
+
   implicit val codecConfig: CodecJson[AzureConfig] = CodecJson({ (c: AzureConfig) =>
     ("container" := c.containerName) ->:
     ("credentials" := c.credentials) ->:
@@ -46,7 +60,7 @@ object json {
     ("maxQueueSize" := c.maxQueueSize) ->:
     c.format.asJson
   }, (c => for {
-    format <- c.as[DataFormat]
+    format <- c.as[DataFormat] ||| c.as(legacyDecodeDataFormat)
     container <- (c --\ "container").as[ContainerName]
     credentials <- (c --\ "credentials").as[Option[AzureCredentials]]
     storageUrl <- (c --\ "storageUrl").as[StorageUrl]
