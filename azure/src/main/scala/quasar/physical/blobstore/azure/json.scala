@@ -50,7 +50,7 @@ object json {
     compressionScheme <- (c --\ "compressionScheme").as[Option[CompressionScheme]]
   } yield compressionScheme match {
     case None => parsing
-    case Some(_) => DataFormat.compressed(parsing)
+    case Some(_) => DataFormat.gzipped(parsing)
   })
 
   implicit val codecConfig: CodecJson[AzureConfig] = CodecJson({ (c: AzureConfig) =>

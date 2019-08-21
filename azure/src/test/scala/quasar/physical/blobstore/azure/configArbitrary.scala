@@ -43,8 +43,8 @@ object configArbitrary {
     rt <- Gen.oneOf(
       DF.ldjson,
       DF.json,
-      DF.compressed(DF.json),
-      DF.compressed(DF.ldjson))
+      DF.gzipped(DF.json),
+      DF.gzipped(DF.ldjson))
   } yield AzureConfig(c, cred, s, qs, rt)
 
   implicit val arbAzureConfig: Arbitrary[AzureConfig] =
