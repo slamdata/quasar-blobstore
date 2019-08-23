@@ -20,7 +20,6 @@ import slamdata.Predef._
 import quasar.api.datasource.DatasourceType
 import quasar.api.resource.{ResourceName, ResourcePath, ResourcePathType}
 import quasar.connector._
-import ParsableType.JsonVariant
 import quasar.blobstore.services.{GetService, ListService, PropsService, StatusService}
 import quasar.connector.datasource.LightweightDatasource, LightweightDatasourceModule.DS
 import quasar.contrib.scalaz.MonadError_
@@ -35,7 +34,7 @@ import fs2.Stream
 
 class BlobstoreDatasource[F[_]: Monad: MonadResourceErr, P](
   val kind: DatasourceType,
-  jvar: JsonVariant,
+  format: DataFormat,
   statusService: StatusService[F],
   listService: ListService[F],
   propsService: PropsService[F, P],
@@ -49,7 +48,7 @@ class BlobstoreDatasource[F[_]: Monad: MonadResourceErr, P](
     for {
       optBytes <- (converters.resourcePathToBlobPathK[F] andThen getService).apply(iRead.path)
       bytes <- optBytes.map(_.pure[F]).getOrElse(raisePathNotFound(iRead.path))
-      qr = QueryResult.typed[F](ParsableType.json(jvar, false), bytes, iRead.stages)
+      qr = QueryResult.typed[F](format, bytes, iRead.stages)
     } yield qr
 
   override def pathIsResource(path: ResourcePath): F[Boolean] =

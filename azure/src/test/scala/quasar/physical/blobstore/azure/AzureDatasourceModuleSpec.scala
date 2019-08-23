@@ -18,9 +18,9 @@ package quasar.physical.blobstore.azure
 
 import slamdata.Predef._
 import quasar.api.datasource.DatasourceError
+import quasar.connector.DataFormat
 import quasar.blobstore.azure._
 import quasar.physical.blobstore.BlobstoreDatasource._
-import quasar.physical.blobstore.ResourceType
 
 import scala.concurrent.ExecutionContext
 
@@ -48,12 +48,12 @@ class AzureDatasourceModuleSpec extends Specification {
       .unsafeRunSync()
 
   private def cfgToJson(cfg: AzureConfig, stripNulls: Boolean = true): Json = {
-    val js = Json.obj(
-      "container" -> Json.jString(cfg.containerName.value),
-      "credentials" -> cfg.credentials.fold(jNull)(credToJson),
-      "storageUrl" -> Json.jString(cfg.storageUrl.value),
-      "maxQueueSize" -> cfg.maxQueueSize.fold(jNull)(qs => Json.jNumber(qs.value.value)),
-      "resourceType" -> Json.jString(cfg.resourceType.toString.toLowerCase))
+    val js =
+      ("container" := Json.jString(cfg.containerName.value)) ->:
+      ("credentials" := cfg.credentials.fold(jNull)(credToJson)) ->:
+      ("storageUrl" := Json.jString(cfg.storageUrl.value)) ->:
+      ("maxQueueSize" := cfg.maxQueueSize.fold(jNull)(qs => Json.jNumber(qs.value.value))) ->:
+      cfg.format.asJson
 
     if (stripNulls)
       js.withObject(j => JsonObject.fromTraversableOnce(j.toList.filter(!_._2.isNull)))
@@ -99,7 +99,7 @@ class AzureDatasourceModuleSpec extends Specification {
         Some(AzureCredentials(AccountName("myname"), AccountKey("mykey"))),
         Azure.mkStdStorageUrl(AccountName("myaccount")),
         Some(MaxQueueSize(10)),
-        ResourceType.Json)
+        DataFormat.json)
 
       AzureDatasourceModule.sanitizeConfig(cfgToJson(cfg)) must_===
         cfgToJson(AzureConfig(
@@ -107,7 +107,7 @@ class AzureDatasourceModuleSpec extends Specification {
           Some(AzureCredentials(AccountName("<REDACTED>"), AccountKey("<REDACTED>"))),
           Azure.mkStdStorageUrl(AccountName("myaccount")),
           Some(MaxQueueSize(10)),
-          ResourceType.Json))
+          DataFormat.json))
     }
 
     "does not change config without credentials" >> {
@@ -116,7 +116,7 @@ class AzureDatasourceModuleSpec extends Specification {
         None,
         Azure.mkStdStorageUrl(AccountName("myaccount")),
         Some(MaxQueueSize(10)),
-        ResourceType.LdJson))
+        DataFormat.ldjson))
 
       AzureDatasourceModule.sanitizeConfig(cfg) must_=== cfg
     }
@@ -127,7 +127,7 @@ class AzureDatasourceModuleSpec extends Specification {
         None,
         Azure.mkStdStorageUrl(AccountName("myaccount")),
         None,
-        ResourceType.LdJson), stripNulls = false)
+        DataFormat.ldjson), stripNulls = false)
 
       AzureDatasourceModule.sanitizeConfig(cfg) must_=== cfg
     }
