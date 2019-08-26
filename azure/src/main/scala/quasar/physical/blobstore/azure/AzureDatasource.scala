@@ -22,9 +22,7 @@ import slamdata.Predef._
 import quasar.api.datasource.DatasourceType
 import quasar.blobstore.azure.{converters => _, _}
 import quasar.blobstore.services.{GetService, ListService, PropsService, StatusService}
-import quasar.connector.MonadResourceErr
-import quasar.connector.ParsableType.JsonVariant
-import quasar.physical.blobstore.ResourceType
+import quasar.connector.{MonadResourceErr, DataFormat}
 
 import cats.Monad
 import cats.effect.{ConcurrentEffect, ContextShift}
@@ -38,10 +36,10 @@ class AzureDatasource[
   listService: ListService[F],
   propsService: PropsService[F, BlobGetPropertiesResponse],
   getService: GetService[F],
-  jsonVariant: JsonVariant)
+  format: DataFormat)
   extends BlobstoreDatasource[F, BlobGetPropertiesResponse](
     AzureDatasource.dsType,
-    jsonVariant,
+    format,
     statusService,
     listService,
     propsService,
@@ -60,12 +58,6 @@ object AzureDatasource {
           handlers.recoverStorageException[F, Option[BlobGetPropertiesResponse]] map
           (_.flatten),
         AzureGetService.mk(c, cfg.maxQueueSize.getOrElse(MaxQueueSize.default)),
-        toJsonVariant(cfg.resourceType))
-    }
-
-  private def toJsonVariant(resourceType: ResourceType): JsonVariant =
-    resourceType match {
-      case ResourceType.Json => JsonVariant.ArrayWrapped
-      case ResourceType.LdJson => JsonVariant.LineDelimited
+        cfg.format)
     }
 }

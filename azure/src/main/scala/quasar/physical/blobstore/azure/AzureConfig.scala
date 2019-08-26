@@ -18,11 +18,11 @@ package quasar.physical.blobstore.azure
 
 import slamdata.Predef.Option
 import quasar.blobstore.azure._
-import quasar.physical.blobstore.ResourceType
+import quasar.connector.DataFormat
 
 final case class AzureConfig(
     override val containerName: ContainerName,
     override val credentials: Option[AzureCredentials],
     override val storageUrl: StorageUrl,
     override val maxQueueSize: Option[MaxQueueSize],
-    resourceType: ResourceType) extends Config
+    format: DataFormat) extends Config

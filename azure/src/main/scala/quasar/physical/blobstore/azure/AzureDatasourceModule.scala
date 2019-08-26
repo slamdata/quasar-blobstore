@@ -27,8 +27,7 @@ import java.net.{MalformedURLException, UnknownHostException}
 import scala.concurrent.ExecutionContext
 import scala.util.control.NonFatal
 
-import argonaut.Json
-import argonaut.ArgonautScalaz._
+import argonaut.{Json, Argonaut}, Argonaut._
 import cats.ApplicativeError
 import cats.effect.{ConcurrentEffect, ContextShift, Resource, Timer}
 import cats.syntax.applicative._
@@ -36,7 +35,6 @@ import cats.syntax.either._
 import cats.syntax.flatMap._
 import cats.syntax.functor._
 import scalaz.NonEmptyList
-import scalaz.syntax.equal._
 
 object AzureDatasourceModule extends LightweightDatasourceModule {
   private val redactedCreds =
@@ -99,14 +97,11 @@ object AzureDatasourceModule extends LightweightDatasourceModule {
     }
   }
 
-  override def sanitizeConfig(config: Json): Json = {
-    val sanitized = for {
-      creds <- config.cursor --\ "credentials"
-
-      redacted =
-        if (creds.focus === Json.jNull) creds
-        else creds.set(json.codecCredentials.encode(redactedCreds))
-    } yield redacted.undo
-    sanitized.getOrElse(config)
+  override def sanitizeConfig(config: Json): Json = config.as[AzureConfig].result match {
+    case Left(_) => config
+    case Right(cfg) => cfg.credentials match {
+      case Some(_) => cfg.copy(credentials = Some(redactedCreds)).asJson
+      case None => config
+    }
   }
 }

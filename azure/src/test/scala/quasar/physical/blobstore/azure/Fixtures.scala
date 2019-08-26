@@ -18,7 +18,7 @@ package quasar.physical.blobstore.azure
 
 import slamdata.Predef.None
 import quasar.blobstore.azure._
-import quasar.physical.blobstore.ResourceType
+import quasar.connector.DataFormat
 
 object Fixtures {
 
@@ -27,6 +27,5 @@ object Fixtures {
   val InvalidCredentials = AzureCredentials(AccountName("invalid"), AccountKey("invalid"))
 
   val PublicConfig =
-    AzureConfig(ContainerName("test"), None, StorageUrlSlamdata, None, ResourceType.LdJson)
-
+    AzureConfig(ContainerName("test"), None, StorageUrlSlamdata, None, DataFormat.json)
 }
