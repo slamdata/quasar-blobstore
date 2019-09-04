@@ -34,6 +34,7 @@ import cats.syntax.applicative._
 import cats.syntax.either._
 import cats.syntax.flatMap._
 import cats.syntax.functor._
+import cats.instances.option._
 import scalaz.NonEmptyList
 
 object AzureDatasourceModule extends LightweightDatasourceModule {
@@ -98,10 +99,9 @@ object AzureDatasourceModule extends LightweightDatasourceModule {
   }
 
   override def sanitizeConfig(config: Json): Json = config.as[AzureConfig].result match {
-    case Left(_) => config
-    case Right(cfg) => cfg.credentials match {
-      case Some(_) => cfg.copy(credentials = Some(redactedCreds)).asJson
-      case None => config
-    }
+    case Left(_) =>
+      config
+    case Right(cfg) =>
+      cfg.copy(credentials = cfg.credentials as redactedCreds).asJson
   }
 }
