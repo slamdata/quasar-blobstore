@@ -110,26 +110,45 @@ class AzureDatasourceModuleSpec extends Specification {
           DataFormat.json))
     }
 
-    "does not change config without credentials" >> {
-      val cfg = cfgToJson(AzureConfig(
-        ContainerName("mycontainer"),
-        None,
-        Azure.mkStdStorageUrl(AccountName("myaccount")),
-        Some(MaxQueueSize(10)),
-        DataFormat.ldjson))
+    "migrate config without credentials" >> {
+      val cfg = Json.obj(
+        "container" -> jString("mycontainer"),
+        "storageUrl" -> jString("url"),
+        "maxQueueSize" -> jNumber(10),
+        "resourceType" -> jString("ldjson"))
 
-      AzureDatasourceModule.sanitizeConfig(cfg) must_=== cfg
+      val expected = Json.obj(
+        "credentials" -> jNull,
+        "container" -> jString("mycontainer"),
+        "storageUrl" -> jString("url"),
+        "maxQueueSize" -> jNumber(10),
+        "format" -> Json.obj(
+          "type" -> jString("json"),
+          "variant" -> jString("line-delimited"),
+          "precise" -> jBool(false)))
+
+      AzureDatasourceModule.sanitizeConfig(cfg) must_=== expected
     }
 
-    "does not change config with null credentials" >> {
-      val cfg = cfgToJson(AzureConfig(
-        ContainerName("mycontainer"),
-        None,
-        Azure.mkStdStorageUrl(AccountName("myaccount")),
-        None,
-        DataFormat.ldjson), stripNulls = false)
+    "migrate config with null credentials" >> {
+      val cfg = Json.obj(
+        "credentials" -> jNull,
+        "container" -> jString("mycontainer"),
+        "storageUrl" -> jString("url"),
+        "maxQueueSize" -> jNumber(10),
+        "resourceType" -> jString("ldjson"))
 
-      AzureDatasourceModule.sanitizeConfig(cfg) must_=== cfg
+      val expected = Json.obj(
+        "credentials" -> jNull,
+        "container" -> jString("mycontainer"),
+        "storageUrl" -> jString("url"),
+        "maxQueueSize" -> jNumber(10),
+        "format" -> Json.obj(
+          "type" -> jString("json"),
+          "variant" -> jString("line-delimited"),
+          "precise" -> jBool(false)))
+
+      AzureDatasourceModule.sanitizeConfig(cfg) must_=== expected
     }
   }
 
