@@ -39,7 +39,7 @@ import scalaz.NonEmptyList
 
 object AzureDatasourceModule extends LightweightDatasourceModule {
   private val redactedCreds =
-    AzureCredentials(
+    AzureCredentials.SharedKey(
       AccountName("<REDACTED>"),
       AccountKey("<REDACTED>"))
 

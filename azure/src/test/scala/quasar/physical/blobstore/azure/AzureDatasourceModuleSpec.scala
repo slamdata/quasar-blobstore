@@ -37,7 +37,7 @@ class AzureDatasourceModuleSpec extends Specification {
   implicit val cs: ContextShift[IO] = IO.contextShift(ec)
   implicit val timer: Timer[IO] = IO.timer(ec)
 
-  private def credToJson(cred: AzureCredentials): Json =
+  private def credToJson(cred: AzureCredentials.SharedKey): Json =
     Json.obj(
       "accountName" -> Json.jString(cred.accountName.value),
       "accountKey" -> Json.jString(cred.accountKey.value))
@@ -96,7 +96,7 @@ class AzureDatasourceModuleSpec extends Specification {
     "redacts config with credentials" >> {
       val cfg = AzureConfig(
         ContainerName("mycontainer"),
-        Some(AzureCredentials(AccountName("myname"), AccountKey("mykey"))),
+        Some(AzureCredentials.SharedKey(AccountName("myname"), AccountKey("mykey"))),
         Azure.mkStdStorageUrl(AccountName("myaccount")),
         Some(MaxQueueSize(10)),
         DataFormat.json)
@@ -104,7 +104,7 @@ class AzureDatasourceModuleSpec extends Specification {
       AzureDatasourceModule.sanitizeConfig(cfgToJson(cfg)) must_===
         cfgToJson(AzureConfig(
           ContainerName("mycontainer"),
-          Some(AzureCredentials(AccountName("<REDACTED>"), AccountKey("<REDACTED>"))),
+          Some(AzureCredentials.SharedKey(AccountName("<REDACTED>"), AccountKey("<REDACTED>"))),
           Azure.mkStdStorageUrl(AccountName("myaccount")),
           Some(MaxQueueSize(10)),
           DataFormat.json))

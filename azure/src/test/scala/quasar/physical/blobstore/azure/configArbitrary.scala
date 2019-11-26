@@ -27,10 +27,10 @@ import eu.timepit.refined.scalacheck.numeric._
 
 object configArbitrary {
 
-  val genCredentials: Gen[AzureCredentials] = for {
+  val genCredentials: Gen[AzureCredentials.SharedKey] = for {
     n <- arbitrary[String].map(AccountName)
     k <- arbitrary[String].map(AccountKey)
-  } yield AzureCredentials(n, k)
+  } yield AzureCredentials.SharedKey(n, k)
 
   val genMaxQueueSize: Gen[MaxQueueSize] =
     arbitrary[Int Refined Positive].map(MaxQueueSize(_))
