@@ -15,7 +15,7 @@ lazy val publishTestsSettings = Seq(
 lazy val root = project
   .in(file("."))
   .settings(noPublishSettings)
-  .aggregate(core, azure)
+  .aggregate(azure)
 
 val quasarVersion = IO.read(file("./quasar-version")).trim
 
@@ -26,24 +26,8 @@ val refinedVersion = "0.9.9"
 val slf4jVersion = "1.7.25"
 val specsVersion = "4.7.1"
 
-lazy val core = project
-  .in(file("core"))
-  .settings(addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1"))
-  .settings(publishTestsSettings)
-  .settings(
-    name := "quasar-datasource-blobstore-core",
-    libraryDependencies ++= Seq(
-      "com.slamdata" %% "async-blobstore-core" % asyncBlobstoreVersion,
-      "com.slamdata" %% "quasar-connector" % quasarVersion,
-      "com.slamdata" %% "quasar-connector" % quasarVersion % Test classifier "tests",
-      "com.slamdata" %% "quasar-foundation" % quasarVersion % Test classifier "tests",
-      "org.specs2" %% "specs2-core" % specsVersion % Test,
-      "org.specs2" %% "specs2-scalaz" % specsVersion % Test,
-      "org.specs2" %% "specs2-scalacheck" % specsVersion % Test))
-
 lazy val azure = project
   .in(file("azure"))
-  .dependsOn(core % "compile->compile;test->test")
   .settings(addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1"))
   .settings(
     name := "quasar-datasource-azure",
@@ -61,7 +45,11 @@ lazy val azure = project
     datasourceDependencies ++= Seq(
       "com.github.alexarchambault" %% "argonaut-refined_6.2" % argonautRefinedVersion,
       "com.slamdata" %% "async-blobstore-azure" % asyncBlobstoreVersion,
+      "com.slamdata" %% "async-blobstore-core" % asyncBlobstoreVersion,
       "eu.timepit" %% "refined-scalacheck" % refinedVersion,
+      "org.specs2" %% "specs2-core" % specsVersion % Test,
+      "org.specs2" %% "specs2-scalaz" % specsVersion % Test,
+      "org.specs2" %% "specs2-scalacheck" % specsVersion % Test,
       "org.slf4j" % "slf4j-log4j12" % slf4jVersion % Test))
 
   .enablePlugins(AutomateHeaderPlugin, DatasourcePlugin)
