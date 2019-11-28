@@ -52,12 +52,12 @@ object AzureDatasource {
     Azure.mkContainerUrl[F](cfg) map { c =>
 
       new AzureDatasource[F](
-        AzureStatusService.mk(c),
-        AzureListService.mk[F](c),
-        AzurePropsService.mk[F](c) mapF
+        AzureStatusService.mk(c.value),
+        AzureListService.mk[F](c.value),
+        AzurePropsService.mk[F](c.value) mapF
           handlers.recoverStorageException[F, Option[BlobGetPropertiesResponse]] map
           (_.flatten),
-        AzureGetService.mk(c, cfg.maxQueueSize.getOrElse(MaxQueueSize.default)),
+        AzureGetService.mk(c.value, cfg.maxQueueSize.getOrElse(MaxQueueSize.default)),
         cfg.format)
     }
 }

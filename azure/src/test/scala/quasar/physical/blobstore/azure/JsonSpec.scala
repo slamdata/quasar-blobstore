@@ -44,7 +44,7 @@ class JsonSpec extends Specification with ScalaCheck {
       s.decodeOption[AzureConfig] must_=== Some(
         AzureConfig(
           ContainerName("mycontainer"),
-          Some(AzureCredentials(AccountName("myname"), AccountKey("mykey"))),
+          Some(AzureCredentials.SharedKey(AccountName("myname"), AccountKey("mykey"))),
           Azure.mkStdStorageUrl(AccountName("myaccount")),
           Some(MaxQueueSize(10)),
           DF.ldjson))

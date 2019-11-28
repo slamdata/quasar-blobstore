@@ -36,8 +36,8 @@ object json {
   implicit val encodeAccountKey: EncodeJson[AccountKey] = jencode1(_.value)
   implicit val encodeMaxQueueSize: EncodeJson[MaxQueueSize] = jencode1(_.value)
 
-  implicit val codecCredentials: CodecJson[AzureCredentials] =
-    casecodec2(AzureCredentials.apply, AzureCredentials.unapply)("accountName", "accountKey")
+  implicit val codecCredentials: CodecJson[AzureCredentials.SharedKey] =
+    casecodec2(AzureCredentials.SharedKey.apply, AzureCredentials.SharedKey.unapply)("accountName", "accountKey")
 
   val legacyDecodeFlatFormat: DecodeJson[DataFormat] = DecodeJson { c => c.as[String].flatMap {
     case "json" => DecodeResult.ok(DataFormat.json)
@@ -62,7 +62,7 @@ object json {
   }, (c => for {
     format <- c.as[DataFormat] ||| c.as(legacyDecodeDataFormat)
     container <- (c --\ "container").as[ContainerName]
-    credentials <- (c --\ "credentials").as[Option[AzureCredentials]]
+    credentials <- (c --\ "credentials").as[Option[AzureCredentials.SharedKey]]
     storageUrl <- (c --\ "storageUrl").as[StorageUrl]
     maxQueueSize <- (c --\ "maxQueueSize").as[Option[MaxQueueSize]]
   } yield AzureConfig(container, credentials, storageUrl, maxQueueSize, format)))

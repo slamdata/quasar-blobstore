@@ -24,7 +24,7 @@ object Fixtures {
 
   val AccountNameSlamdata = AccountName("slamdata")
   val StorageUrlSlamdata = Azure.mkStdStorageUrl(AccountNameSlamdata)
-  val InvalidCredentials = AzureCredentials(AccountName("invalid"), AccountKey("invalid"))
+  val InvalidCredentials = AzureCredentials.SharedKey(AccountName("invalid"), AccountKey("invalid"))
 
   val PublicConfig =
     AzureConfig(ContainerName("test"), None, StorageUrlSlamdata, None, DataFormat.json)

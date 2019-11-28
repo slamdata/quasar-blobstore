@@ -22,7 +22,7 @@ import quasar.connector.DataFormat
 
 final case class AzureConfig(
     override val containerName: ContainerName,
-    override val credentials: Option[AzureCredentials],
+    override val credentials: Option[AzureCredentials.SharedKey],
     override val storageUrl: StorageUrl,
     override val maxQueueSize: Option[MaxQueueSize],
     format: DataFormat) extends Config
