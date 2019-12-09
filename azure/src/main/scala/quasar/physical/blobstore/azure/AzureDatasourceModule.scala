@@ -17,6 +17,8 @@
 package quasar.physical.blobstore.azure
 
 import slamdata.Predef._
+
+import quasar.RateLimiter
 import quasar.api.datasource.DatasourceError.InitializationError
 import quasar.api.datasource.{DatasourceError, DatasourceType}
 import quasar.blobstore.azure._, json._
@@ -47,7 +49,8 @@ object AzureDatasourceModule extends LightweightDatasourceModule {
 
   @SuppressWarnings(Array("org.wartremover.warts.ImplicitParameter"))
   override def lightweightDatasource[F[_]: ConcurrentEffect: ContextShift: MonadResourceErr: Timer](
-      json: Json)(
+      json: Json,
+      rateLimiter: RateLimiter[F])(
       implicit ec: ExecutionContext)
       : Resource[F, Either[InitializationError[Json], DS[F]]] = {
 

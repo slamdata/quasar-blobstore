@@ -17,6 +17,8 @@
 package quasar.physical.blobstore.azure
 
 import slamdata.Predef._
+
+import quasar.RateLimiter
 import quasar.api.datasource.DatasourceError
 import quasar.connector.DataFormat
 import quasar.blobstore.azure._
@@ -43,9 +45,10 @@ class AzureDatasourceModuleSpec extends Specification {
       "accountKey" -> Json.jString(cred.accountKey.value))
 
   private def init(j: Json) =
-    AzureDatasourceModule.lightweightDatasource[IO](j)
-      .use(r => IO.pure(r.void))
-      .unsafeRunSync()
+    RateLimiter[IO](1.0).flatMap(rl =>
+      AzureDatasourceModule.lightweightDatasource[IO](j, rl)
+        .use(r => IO.pure(r.void)))
+        .unsafeRunSync()
 
   private def cfgToJson(cfg: AzureConfig, stripNulls: Boolean = true): Json = {
     val js =
