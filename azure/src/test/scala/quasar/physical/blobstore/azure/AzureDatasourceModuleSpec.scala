@@ -18,7 +18,7 @@ package quasar.physical.blobstore.azure
 
 import slamdata.Predef._
 
-import quasar.RateLimiter
+import quasar.{RateLimiter, NoopRateLimitUpdater}
 import quasar.api.datasource.DatasourceError
 import quasar.connector.DataFormat
 import quasar.blobstore.azure._
@@ -28,10 +28,12 @@ import scala.concurrent.ExecutionContext
 
 import argonaut._, Argonaut._
 import cats.effect.{ContextShift, IO, Timer}
+import cats.kernel.instances.uuid._
 import cats.instances.either._
 import cats.syntax.functor._
 import eu.timepit.refined.auto._
 import org.specs2.mutable.Specification
+import java.util.UUID
 
 class AzureDatasourceModuleSpec extends Specification {
 
@@ -45,8 +47,8 @@ class AzureDatasourceModuleSpec extends Specification {
       "accountKey" -> Json.jString(cred.accountKey.value))
 
   private def init(j: Json) =
-    RateLimiter[IO](1.0).flatMap(rl =>
-      AzureDatasourceModule.lightweightDatasource[IO](j, rl)
+    RateLimiter[IO, UUID](1.0, IO.delay(UUID.randomUUID()), NoopRateLimitUpdater[IO, UUID]).flatMap(rl =>
+      AzureDatasourceModule.lightweightDatasource[IO, UUID](j, rl)
         .use(r => IO.pure(r.void)))
         .unsafeRunSync()
 
