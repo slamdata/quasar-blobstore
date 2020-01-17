@@ -23,7 +23,7 @@ import quasar.api.datasource.DatasourceError.InitializationError
 import quasar.api.datasource.{DatasourceError, DatasourceType}
 import quasar.blobstore.azure._, json._
 import quasar.blobstore.BlobstoreStatus
-import quasar.connector.{LightweightDatasourceModule, MonadResourceErr}, LightweightDatasourceModule.DS
+import quasar.connector.{ByteStore, LightweightDatasourceModule, MonadResourceErr}, LightweightDatasourceModule.DS
 
 import java.net.{MalformedURLException, UnknownHostException}
 import scala.concurrent.ExecutionContext
@@ -53,7 +53,8 @@ object AzureDatasourceModule extends LightweightDatasourceModule {
       F[_]: ConcurrentEffect: ContextShift: MonadResourceErr: Timer,
       A: Hash](
       json: Json,
-      rateLimiter: RateLimiting[F, A])(
+      rateLimiter: RateLimiting[F, A],
+      byteStore: ByteStore[F])(
       implicit ec: ExecutionContext)
       : Resource[F, Either[InitializationError[Json], DS[F]]] = {
 
