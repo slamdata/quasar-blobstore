@@ -20,7 +20,7 @@ import slamdata.Predef._
 
 import quasar.{RateLimiter, NoopRateLimitUpdater}
 import quasar.api.datasource.DatasourceError
-import quasar.connector.DataFormat
+import quasar.connector.{ByteStore, DataFormat}
 import quasar.blobstore.azure._
 import quasar.physical.blobstore.BlobstoreDatasource._
 
@@ -48,7 +48,7 @@ class AzureDatasourceModuleSpec extends Specification {
 
   private def init(j: Json) =
     RateLimiter[IO, UUID](1.0, IO.delay(UUID.randomUUID()), NoopRateLimitUpdater[IO, UUID]).flatMap(rl =>
-      AzureDatasourceModule.lightweightDatasource[IO, UUID](j, rl)
+      AzureDatasourceModule.lightweightDatasource[IO, UUID](j, rl, ByteStore.void[IO])
         .use(r => IO.pure(r.void)))
         .unsafeRunSync()
 
