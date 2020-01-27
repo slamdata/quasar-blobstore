@@ -187,7 +187,7 @@ abstract class BlobstoreDatasourceSpec[F[_]: Effect] extends EffectfulQSpec[F] {
     datasource flatMap { ds =>
       ds.evaluate(iRead(path)) flatMap {
         case QueryResult.Typed(_, data, ScalarStages.Id) =>
-          data.compile.to[Array].map(_ must_=== expected)
+          data.compile.to(Array).map(_ must_=== expected)
 
         case _ =>
           ko("Unexpected QueryResult").pure[F]
