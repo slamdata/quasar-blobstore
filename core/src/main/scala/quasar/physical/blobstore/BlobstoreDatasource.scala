@@ -17,39 +17,43 @@
 package quasar.physical.blobstore
 
 import slamdata.Predef._
+
 import quasar.api.datasource.DatasourceType
 import quasar.api.resource.{ResourceName, ResourcePath, ResourcePathType}
 import quasar.connector._
 import quasar.blobstore.services.{GetService, ListService, PropsService, StatusService}
-import quasar.connector.datasource.LightweightDatasource, LightweightDatasourceModule.DS
+import quasar.connector.datasource.{BatchLoader, LightweightDatasource, LightweightDatasourceModule, Loader}
 import quasar.contrib.scalaz.MonadError_
 import quasar.qscript.InterpretedRead
 
 import cats.Monad
+import cats.data.NonEmptyList
 import cats.effect.IO
 import cats.syntax.applicative._
 import cats.syntax.functor._
 import cats.syntax.flatMap._
+
 import fs2.Stream
 
 class BlobstoreDatasource[F[_]: Monad: MonadResourceErr, P](
-  val kind: DatasourceType,
-  format: DataFormat,
-  statusService: StatusService[F],
-  listService: ListService[F],
-  propsService: PropsService[F, P],
-  getService: GetService[F])
-  extends LightweightDatasource[F, Stream[F, ?], QueryResult[F]] {
+    val kind: DatasourceType,
+    format: DataFormat,
+    statusService: StatusService[F],
+    listService: ListService[F],
+    propsService: PropsService[F, P],
+    getService: GetService[F])
+    extends LightweightDatasource[F, Stream[F, ?], QueryResult[F]] {
 
   private def raisePathNotFound(path: ResourcePath) =
     MonadResourceErr[F].raiseError(ResourceError.pathNotFound(path))
 
-  override def evaluate(iRead: InterpretedRead[ResourcePath]): F[QueryResult[F]] =
+  val loaders = NonEmptyList.of(Loader.Batch(BatchLoader.Full { (iRead: InterpretedRead[ResourcePath]) =>
     for {
       optBytes <- (converters.resourcePathToBlobPathK[F] andThen getService).apply(iRead.path)
       bytes <- optBytes.map(_.pure[F]).getOrElse(raisePathNotFound(iRead.path))
       qr = QueryResult.typed[F](format, bytes, iRead.stages)
     } yield qr
+  }))
 
   override def pathIsResource(path: ResourcePath): F[Boolean] =
     (converters.resourcePathToBlobPathK andThen propsService map { _.isDefined }).apply(path)
@@ -60,7 +64,7 @@ class BlobstoreDatasource[F[_]: Monad: MonadResourceErr, P](
       listService.map(_.map(_.map(converters.toResourceNameType)))
     ).apply(prefixPath)
 
-  def asDsType: DS[F] = this
+  def asDsType: LightweightDatasourceModule.DS[F] = this
 
   def status: StatusService[F] = statusService
 }

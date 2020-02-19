@@ -23,7 +23,8 @@ import quasar.api.datasource.DatasourceError.InitializationError
 import quasar.api.datasource.{DatasourceError, DatasourceType}
 import quasar.blobstore.azure._, json._
 import quasar.blobstore.BlobstoreStatus
-import quasar.connector.{ByteStore, LightweightDatasourceModule, MonadResourceErr}, LightweightDatasourceModule.DS
+import quasar.connector.{ByteStore, MonadResourceErr}
+import quasar.connector.datasource.LightweightDatasourceModule
 
 import java.net.{MalformedURLException, UnknownHostException}
 import scala.concurrent.ExecutionContext
@@ -56,7 +57,7 @@ object AzureDatasourceModule extends LightweightDatasourceModule {
       rateLimiter: RateLimiting[F, A],
       byteStore: ByteStore[F])(
       implicit ec: ExecutionContext)
-      : Resource[F, Either[InitializationError[Json], DS[F]]] = {
+      : Resource[F, Either[InitializationError[Json], LightweightDatasourceModule.DS[F]]] = {
 
     val sanitizedJson = sanitizeConfig(json)
 
@@ -100,7 +101,7 @@ object AzureDatasourceModule extends LightweightDatasourceModule {
       case Left((msg, _)) =>
         DatasourceError
           .invalidConfiguration[Json, InitializationError[Json]](kind, sanitizedJson, NonEmptyList(msg))
-          .asLeft[DS[F]]
+          .asLeft[LightweightDatasourceModule.DS[F]]
           .pure[Resource[F, ?]]
     }
   }
