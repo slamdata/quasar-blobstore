@@ -17,7 +17,7 @@
 package quasar.physical.blobstore
 package azure
 
-import quasar.connector.LightweightDatasourceModule.DS
+import quasar.connector.datasource.LightweightDatasourceModule
 import quasar.physical.blobstore.BlobstoreDatasource._
 
 import cats.effect.IO
@@ -26,5 +26,6 @@ abstract class AzureDatasourceSpec extends BlobstoreDatasourceSpec[IO] {
 
   val cfg: AzureConfig
 
-  override def datasource: IO[DS[IO]] = AzureDatasource.mk[IO](cfg)
+  override def datasource: IO[LightweightDatasourceModule.DS[IO]] =
+    AzureDatasource.mk[IO](cfg)
 }

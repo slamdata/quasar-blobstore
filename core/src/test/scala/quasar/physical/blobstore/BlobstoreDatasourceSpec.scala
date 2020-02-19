@@ -19,7 +19,8 @@ package quasar.physical.blobstore
 import slamdata.Predef._
 import quasar.{EffectfulQSpec, ScalarStages}
 import quasar.api.resource.{ResourceName, ResourcePath, ResourcePathType}
-import quasar.connector.{LightweightDatasourceModule, QueryResult, ResourceError}, LightweightDatasourceModule.DS
+import quasar.connector.{QueryResult, ResourceError}
+import quasar.connector.datasource.LightweightDatasourceModule
 import quasar.qscript.InterpretedRead
 
 import java.nio.charset.StandardCharsets
@@ -36,7 +37,7 @@ abstract class BlobstoreDatasourceSpec[F[_]: Effect] extends EffectfulQSpec[F] {
 
   val F = Effect[F]
 
-  def datasource: F[DS[F]]
+  def datasource: F[LightweightDatasourceModule.DS[F]]
 
   val nonExistentPath =
     ResourcePath.root() / ResourceName("does") / ResourceName("not") / ResourceName("exist")
@@ -147,7 +148,7 @@ abstract class BlobstoreDatasourceSpec[F[_]: Effect] extends EffectfulQSpec[F] {
   def iRead[A](path: A): InterpretedRead[A] = InterpretedRead(path, ScalarStages.Id)
 
   def assertPathIsResource(
-      datasource: F[DS[F]],
+      datasource: F[LightweightDatasourceModule.DS[F]],
       path: ResourcePath,
       expected: Boolean): F[MatchResult[Any]] =
     for {
@@ -157,10 +158,10 @@ abstract class BlobstoreDatasourceSpec[F[_]: Effect] extends EffectfulQSpec[F] {
 
 
   def assertPathNotFound(
-      datasource: F[DS[F]],
+      datasource: F[LightweightDatasourceModule.DS[F]],
       path: ResourcePath): F[MatchResult[Any]] =
     datasource flatMap { ds =>
-      F.attempt(ds.evaluate(iRead(path))) map {
+      F.attempt(ds.loadFull(iRead(path)).value) map {
         case Left(t) => ResourceError.throwableP.getOption(t) must_=== Some(ResourceError.pathNotFound(path))
         case Right(r) => ko(s"Unexpected QueryResult: $r")
       }
@@ -181,12 +182,12 @@ abstract class BlobstoreDatasourceSpec[F[_]: Effect] extends EffectfulQSpec[F] {
     } yield res
 
   def assertResultBytes(
-      datasource: F[DS[F]],
+      datasource: F[LightweightDatasourceModule.DS[F]],
       path: ResourcePath,
       expected: Array[Byte]): F[MatchResult[Any]] =
     datasource flatMap { ds =>
-      ds.evaluate(iRead(path)) flatMap {
-        case QueryResult.Typed(_, data, ScalarStages.Id) =>
+      ds.loadFull(iRead(path)).value flatMap {
+        case Some(QueryResult.Typed(_, data, ScalarStages.Id)) =>
           data.compile.to(Array).map(_ must_=== expected)
 
         case _ =>
