@@ -30,7 +30,7 @@ jobs:
           java-version: ${{ env.JDK }}
       - name: Setup Git Actor
         run: git config github.actor slamdata-bot
-      - name:
+      - name: Assemble plugin
         run: $SBT ++${{ matrix.scala }} datasourceAssemblePlugin
       - name: Compile and test
         run: $SBT ++${{ matrix.scala }} test
