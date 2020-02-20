@@ -50,20 +50,20 @@ lazy val azure = project
   .settings(
     name := "quasar-datasource-azure",
 
-    datasourceName := "azure",
+    quasarPluginName := "azure",
 
-    datasourceQuasarVersion := quasarVersion,
+    quasarPluginQuasarVersion := quasarVersion,
 
-    datasourceModuleFqcn := "quasar.physical.blobstore.azure.AzureDatasourceModule$",
+    quasarPluginDatasourceFqcn := Some("quasar.physical.blobstore.azure.AzureDatasourceModule$"),
 
     /** Specify managed dependencies here instead of with `libraryDependencies`.
       * Do not include quasar libs, they will be included based on the value of
       * `datasourceQuasarVersion`.
       */
-    datasourceDependencies ++= Seq(
+    quasarPluginDependencies ++= Seq(
       "com.github.alexarchambault" %% "argonaut-refined_6.2" % argonautRefinedVersion,
       "com.slamdata" %% "async-blobstore-azure" % asyncBlobstoreVersion,
       "eu.timepit" %% "refined-scalacheck" % refinedVersion,
       "org.slf4j" % "slf4j-log4j12" % slf4jVersion % Test))
 
-  .enablePlugins(AutomateHeaderPlugin, DatasourcePlugin)
+  .enablePlugins(AutomateHeaderPlugin, QuasarPlugin)

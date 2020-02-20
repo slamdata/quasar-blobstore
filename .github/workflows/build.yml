@@ -31,7 +31,7 @@ jobs:
       - name: Setup Git Actor
         run: git config github.actor slamdata-bot
       - name: Assemble plugin
-        run: $SBT ++${{ matrix.scala }} datasourceAssemblePlugin
+        run: $SBT ++${{ matrix.scala }} quasarPluginAssemble
       - name: Compile and test
         run: $SBT ++${{ matrix.scala }} test
       - name: Upload working directory
