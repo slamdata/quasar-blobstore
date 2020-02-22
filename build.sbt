@@ -25,6 +25,7 @@ val argonautRefinedVersion = "1.2.0-M11"
 val asyncBlobstoreVersion = "2.1.2"
 
 val refinedVersion = "0.9.9"
+val nettyVersion = "4.1.44.Final"
 val slf4jVersion = "1.7.25"
 val specsVersion = "4.8.3"
 
@@ -62,7 +63,8 @@ lazy val azure = project
       */
     quasarPluginDependencies ++= Seq(
       "com.github.alexarchambault" %% "argonaut-refined_6.2" % argonautRefinedVersion,
-      "com.slamdata" %% "async-blobstore-azure" % asyncBlobstoreVersion,
+      "com.slamdata" %% "async-blobstore-azure" % asyncBlobstoreVersion excludeAll(ExclusionRule(organization = "io.netty")),
+      "io.netty" % "netty-all" % nettyVersion,
       "eu.timepit" %% "refined-scalacheck" % refinedVersion,
       "org.slf4j" % "slf4j-log4j12" % slf4jVersion % Test))
 
