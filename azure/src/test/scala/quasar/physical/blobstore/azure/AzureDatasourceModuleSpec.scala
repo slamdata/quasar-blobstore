@@ -61,7 +61,7 @@ class AzureDatasourceModuleSpec extends Specification {
       cfg.format.asJson
 
     if (stripNulls)
-      js.withObject(j => JsonObject.fromTraversableOnce(j.toList.filter(!_._2.isNull)))
+      js.withObject(j => JsonObject.fromIterable(j.toList.filter(!_._2.isNull)))
     else
       js
   }
