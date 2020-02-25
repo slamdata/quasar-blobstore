@@ -62,12 +62,12 @@ jobs:
         uses: actions/setup-ruby@v1
         with:
           ruby-version: '2.6'
-      - name: Make scripts directory
-        run: mkdir scripts/
       - name: Transfer Common Resources
         run: $SBT transferCommonResources
       - name: Export common secrets
         run: $SBT exportSecretsForActions
+      - name: Transfer publish and tag resources
+        run: $SBT transferPublishAndTagResources
       - name: Common setup
         run: ./scripts/commonSetup
       - name: Publish and Tag
@@ -100,8 +100,6 @@ jobs:
         uses: actions/setup-ruby@v1
         with:
           ruby-version: '2.6'
-      - name: Make scripts directory
-        run: mkdir scripts/
       - name: Install common resources
         run: $SBT transferCommonResources
       - name: Export common secrets
