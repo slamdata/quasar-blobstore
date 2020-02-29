@@ -27,7 +27,7 @@ val asyncBlobstoreVersion = "2.1.2"
 val refinedVersion = "0.9.9"
 val nettyVersion = "4.1.44.Final"
 val slf4jVersion = "1.7.25"
-val specsVersion = "4.8.3"
+val specsVersion = "4.9.0"
 
 lazy val core = project
   .in(file("core"))
