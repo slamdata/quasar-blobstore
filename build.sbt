@@ -19,8 +19,6 @@ lazy val root = project
   .settings(noPublishSettings)
   .aggregate(core, azure)
 
-val quasarVersion = IO.read(file("./quasar-version")).trim
-
 val argonautRefinedVersion = "1.2.0-M11"
 val asyncBlobstoreVersion = "2.1.2"
 
@@ -37,9 +35,9 @@ lazy val core = project
     name := "quasar-datasource-blobstore-core",
     libraryDependencies ++= Seq(
       "com.slamdata" %% "async-blobstore-core" % asyncBlobstoreVersion,
-      "com.slamdata" %% "quasar-connector" % quasarVersion,
-      "com.slamdata" %% "quasar-connector" % quasarVersion % Test classifier "tests",
-      "com.slamdata" %% "quasar-foundation" % quasarVersion % Test classifier "tests",
+      "com.slamdata" %% "quasar-connector" % managedVersions.value("slamdata-quasar"),
+      "com.slamdata" %% "quasar-connector" % managedVersions.value("slamdata-quasar") % Test classifier "tests",
+      "com.slamdata" %% "quasar-foundation" % managedVersions.value("slamdata-quasar") % Test classifier "tests",
       "org.specs2" %% "specs2-core" % specsVersion % Test,
       "org.specs2" %% "specs2-scalaz" % specsVersion % Test,
       "org.specs2" %% "specs2-scalacheck" % specsVersion % Test))
@@ -53,7 +51,7 @@ lazy val azure = project
 
     quasarPluginName := "azure",
 
-    quasarPluginQuasarVersion := quasarVersion,
+    quasarPluginQuasarVersion := managedVersions.value("slamdata-quasar"),
 
     quasarPluginDatasourceFqcn := Some("quasar.physical.blobstore.azure.AzureDatasourceModule$"),
 
