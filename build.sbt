@@ -20,7 +20,6 @@ lazy val root = project
   .aggregate(core, azure)
 
 val argonautRefinedVersion = "1.2.0-M11"
-val asyncBlobstoreVersion = "2.1.2"
 
 val refinedVersion = "0.9.9"
 val nettyVersion = "4.1.44.Final"
@@ -34,7 +33,7 @@ lazy val core = project
   .settings(
     name := "quasar-datasource-blobstore-core",
     libraryDependencies ++= Seq(
-      "com.slamdata" %% "async-blobstore-core" % asyncBlobstoreVersion,
+      "com.slamdata" %% "async-blobstore-core" % managedVersions.value("slamdata-async-blobstore"),
       "com.slamdata" %% "quasar-connector" % managedVersions.value("slamdata-quasar"),
       "com.slamdata" %% "quasar-connector" % managedVersions.value("slamdata-quasar") % Test classifier "tests",
       "com.slamdata" %% "quasar-foundation" % managedVersions.value("slamdata-quasar") % Test classifier "tests",
@@ -61,7 +60,7 @@ lazy val azure = project
       */
     quasarPluginDependencies ++= Seq(
       "com.github.alexarchambault" %% "argonaut-refined_6.2" % argonautRefinedVersion,
-      "com.slamdata" %% "async-blobstore-azure" % asyncBlobstoreVersion excludeAll(ExclusionRule(organization = "io.netty")),
+      "com.slamdata" %% "async-blobstore-azure" % managedVersions.value("slamdata-async-blobstore") excludeAll(ExclusionRule(organization = "io.netty")),
       "io.netty" % "netty-all" % nettyVersion,
       "eu.timepit" %% "refined-scalacheck" % refinedVersion,
       "org.slf4j" % "slf4j-log4j12" % slf4jVersion % Test))
