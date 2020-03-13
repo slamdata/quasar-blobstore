@@ -4,11 +4,13 @@ ThisBuild / scalaVersion := "2.12.10"
 
 publishAsOSSProject in ThisBuild := true
 
-homepage in ThisBuild := Some(url("https://github.com/slamdata/quasar-datasource-azure"))
+ThisBuild / githubRepository := "quasar-datasource-azure"
+
+homepage in ThisBuild := Some(url("https://github.com/precog/quasar-datasource-azure"))
 
 scmInfo in ThisBuild := Some(ScmInfo(
-  url("https://github.com/slamdata/quasar-datasource-azure"),
-  "scm:git@github.com:slamdata/quasar-datasource-azure.git"))
+  url("https://github.com/precog/quasar-datasource-azure"),
+  "scm:git@github.com:precog/quasar-datasource-azure.git"))
 
 // Include to also publish a project's tests
 lazy val publishTestsSettings = Seq(
@@ -33,10 +35,10 @@ lazy val core = project
   .settings(
     name := "quasar-datasource-blobstore-core",
     libraryDependencies ++= Seq(
-      "com.slamdata" %% "async-blobstore-core" % managedVersions.value("slamdata-async-blobstore"),
-      "com.slamdata" %% "quasar-connector" % managedVersions.value("slamdata-quasar"),
-      "com.slamdata" %% "quasar-connector" % managedVersions.value("slamdata-quasar") % Test classifier "tests",
-      "com.slamdata" %% "quasar-foundation" % managedVersions.value("slamdata-quasar") % Test classifier "tests",
+      "com.precog" %% "async-blobstore-core" % managedVersions.value("precog-async-blobstore"),
+      "com.precog" %% "quasar-connector" % managedVersions.value("precog-quasar"),
+      "com.precog" %% "quasar-connector" % managedVersions.value("precog-quasar") % Test classifier "tests",
+      "com.precog" %% "quasar-foundation" % managedVersions.value("precog-quasar") % Test classifier "tests",
       "org.specs2" %% "specs2-core" % specsVersion % Test,
       "org.specs2" %% "specs2-scalaz" % specsVersion % Test,
       "org.specs2" %% "specs2-scalacheck" % specsVersion % Test))
@@ -50,7 +52,7 @@ lazy val azure = project
 
     quasarPluginName := "azure",
 
-    quasarPluginQuasarVersion := managedVersions.value("slamdata-quasar"),
+    quasarPluginQuasarVersion := managedVersions.value("precog-quasar"),
 
     quasarPluginDatasourceFqcn := Some("quasar.physical.blobstore.azure.AzureDatasourceModule$"),
 
@@ -60,9 +62,8 @@ lazy val azure = project
       */
     quasarPluginDependencies ++= Seq(
       "com.github.alexarchambault" %% "argonaut-refined_6.2" % argonautRefinedVersion,
-      "com.slamdata" %% "async-blobstore-azure" % managedVersions.value("slamdata-async-blobstore") excludeAll(ExclusionRule(organization = "io.netty")),
+      "com.precog" %% "async-blobstore-azure" % managedVersions.value("precog-async-blobstore") excludeAll(ExclusionRule(organization = "io.netty")),
       "io.netty" % "netty-all" % nettyVersion,
       "eu.timepit" %% "refined-scalacheck" % refinedVersion,
       "org.slf4j" % "slf4j-log4j12" % slf4jVersion % Test))
-
-  .enablePlugins(AutomateHeaderPlugin, QuasarPlugin)
+  .enablePlugins(QuasarPlugin)
