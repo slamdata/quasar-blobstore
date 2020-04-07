@@ -22,7 +22,6 @@ import quasar.{RateLimiter, NoopRateLimitUpdater}
 import quasar.api.datasource.DatasourceError
 import quasar.connector.{ByteStore, DataFormat}
 import quasar.blobstore.azure._
-import quasar.physical.blobstore.BlobstoreDatasource._
 
 import scala.concurrent.ExecutionContext
 
@@ -36,6 +35,7 @@ import org.specs2.mutable.Specification
 import java.util.UUID
 
 class AzureDatasourceModuleSpec extends Specification {
+  import AzureDatasourceSpec._
 
   implicit val ec: ExecutionContext = ExecutionContext.global
   implicit val cs: ContextShift[IO] = IO.contextShift(ec)
