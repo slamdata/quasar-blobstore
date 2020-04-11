@@ -23,12 +23,11 @@ import quasar.api.resource.{ResourceName, ResourcePath, ResourcePathType}
 import quasar.connector._
 import quasar.blobstore.services.{GetService, ListService, PropsService, StatusService}
 import quasar.connector.datasource.{BatchLoader, LightweightDatasource, LightweightDatasourceModule, Loader}
-import quasar.contrib.scalaz.MonadError_
 import quasar.qscript.InterpretedRead
 
 import cats.Monad
 import cats.data.NonEmptyList
-import cats.effect.IO
+import cats.effect.Resource
 import cats.syntax.applicative._
 import cats.syntax.functor._
 import cats.syntax.flatMap._
@@ -42,27 +41,33 @@ class BlobstoreDatasource[F[_]: Monad: MonadResourceErr, P](
     listService: ListService[F],
     propsService: PropsService[F, P],
     getService: GetService[F])
-    extends LightweightDatasource[F, Stream[F, ?], QueryResult[F]] {
+    extends LightweightDatasource[Resource[F, ?], Stream[F, ?], QueryResult[F]] {
 
   private def raisePathNotFound(path: ResourcePath) =
     MonadResourceErr[F].raiseError(ResourceError.pathNotFound(path))
 
   val loaders = NonEmptyList.of(Loader.Batch(BatchLoader.Full { (iRead: InterpretedRead[ResourcePath]) =>
-    for {
+    Resource.liftF(for {
       optBytes <- (converters.resourcePathToBlobPathK[F] andThen getService).apply(iRead.path)
       bytes <- optBytes.map(_.pure[F]).getOrElse(raisePathNotFound(iRead.path))
       qr = QueryResult.typed[F](format, bytes, iRead.stages)
-    } yield qr
+    } yield qr)
   }))
 
-  override def pathIsResource(path: ResourcePath): F[Boolean] =
-    (converters.resourcePathToBlobPathK andThen propsService map { _.isDefined }).apply(path)
+  override def pathIsResource(path: ResourcePath): Resource[F, Boolean] =
+    converters.resourcePathToBlobPathK
+      .andThen(propsService)
+      .mapK(Resource.liftK)
+      .map(_.isDefined)
+      .apply(path)
 
   override def prefixedChildPaths(prefixPath: ResourcePath)
-      : F[Option[Stream[F, (ResourceName, ResourcePathType.Physical)]]] =
-    (converters.resourcePathToPrefixPathK andThen
-      listService.map(_.map(_.map(converters.toResourceNameType)))
-    ).apply(prefixPath)
+      : Resource[F, Option[Stream[F, (ResourceName, ResourcePathType.Physical)]]] =
+    converters.resourcePathToPrefixPathK
+      .andThen(listService)
+      .mapK(Resource.liftK)
+      .map(_.map(_.map(converters.toResourceNameType)))
+      .apply(prefixPath)
 
   def asDsType: LightweightDatasourceModule.DS[F] = this
 
@@ -70,10 +75,13 @@ class BlobstoreDatasource[F[_]: Monad: MonadResourceErr, P](
 }
 
 object BlobstoreDatasource {
-
-  import shims._
-
-  implicit val ioMonadResourceErr: MonadError_[IO, ResourceError] =
-    MonadError_.facet[IO](ResourceError.throwableP)
-
+  def apply[F[_]: Monad: MonadResourceErr, P](
+      kind: DatasourceType,
+      format: DataFormat,
+      statusService: StatusService[F],
+      listService: ListService[F],
+      propsService: PropsService[F, P],
+      getService: GetService[F])
+      : BlobstoreDatasource[F, P] =
+    new BlobstoreDatasource(kind, format, statusService, listService, propsService, getService)
 }

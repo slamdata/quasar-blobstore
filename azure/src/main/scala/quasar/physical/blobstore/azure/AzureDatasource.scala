@@ -21,43 +21,27 @@ package azure
 import slamdata.Predef._
 import quasar.api.datasource.DatasourceType
 import quasar.blobstore.azure.{converters => _, _}
-import quasar.blobstore.services.{GetService, ListService, PropsService, StatusService}
-import quasar.connector.{MonadResourceErr, DataFormat}
+import quasar.connector.MonadResourceErr
 
-import cats.Monad
 import cats.effect.{ConcurrentEffect, ContextShift}
 import cats.syntax.functor._
 import com.microsoft.azure.storage.blob.models.BlobGetPropertiesResponse
 import eu.timepit.refined.auto._
 
-class AzureDatasource[
-  F[_]: Monad: MonadResourceErr](
-  statusService: StatusService[F],
-  listService: ListService[F],
-  propsService: PropsService[F, BlobGetPropertiesResponse],
-  getService: GetService[F],
-  format: DataFormat)
-  extends BlobstoreDatasource[F, BlobGetPropertiesResponse](
-    AzureDatasource.dsType,
-    format,
-    statusService,
-    listService,
-    propsService,
-    getService)
-
 object AzureDatasource {
   val dsType: DatasourceType = DatasourceType("azure", 1L)
 
-  def mk[F[_]: ConcurrentEffect: ContextShift: MonadResourceErr](cfg: AzureConfig): F[AzureDatasource[F]] =
+  def mk[F[_]: ConcurrentEffect: ContextShift: MonadResourceErr](cfg: AzureConfig)
+      : F[BlobstoreDatasource[F, BlobGetPropertiesResponse]] =
     Azure.mkContainerUrl[F](cfg) map { c =>
-
-      new AzureDatasource[F](
+      BlobstoreDatasource[F, BlobGetPropertiesResponse](
+        dsType,
+        cfg.format,
         AzureStatusService.mk(c.value),
         AzureListService.mk[F](c.value),
         AzurePropsService.mk[F](c.value) mapF
           handlers.recoverStorageException[F, Option[BlobGetPropertiesResponse]] map
           (_.flatten),
-        AzureGetService.mk(c.value, cfg.maxQueueSize.getOrElse(MaxQueueSize.default)),
-        cfg.format)
+        AzureGetService.mk(c.value, cfg.maxQueueSize.getOrElse(MaxQueueSize.default)))
     }
 }

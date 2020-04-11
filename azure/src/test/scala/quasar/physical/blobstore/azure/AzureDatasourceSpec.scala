@@ -17,15 +17,23 @@
 package quasar.physical.blobstore
 package azure
 
+import quasar.contrib.scalaz.MonadError_
+import quasar.connector.ResourceError
 import quasar.connector.datasource.LightweightDatasourceModule
-import quasar.physical.blobstore.BlobstoreDatasource._
 
 import cats.effect.IO
 
 abstract class AzureDatasourceSpec extends BlobstoreDatasourceSpec[IO] {
+  import AzureDatasourceSpec._
 
   val cfg: AzureConfig
 
   override def datasource: IO[LightweightDatasourceModule.DS[IO]] =
     AzureDatasource.mk[IO](cfg)
+}
+
+object AzureDatasourceSpec {
+
+  implicit val ioMonadResourceErr: MonadError_[IO, ResourceError] =
+    MonadError_.facet[IO](ResourceError.throwableP)
 }
