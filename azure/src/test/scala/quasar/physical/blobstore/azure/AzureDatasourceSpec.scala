@@ -21,15 +21,18 @@ import quasar.contrib.scalaz.MonadError_
 import quasar.connector.ResourceError
 import quasar.connector.datasource.LightweightDatasourceModule
 
-import cats.effect.IO
+import cats.effect.{IO, Resource}
+import fs2.Stream
 
 abstract class AzureDatasourceSpec extends BlobstoreDatasourceSpec[IO] {
   import AzureDatasourceSpec._
 
   val cfg: AzureConfig
 
-  override def datasource: IO[LightweightDatasourceModule.DS[IO]] =
-    AzureDatasource.mk[IO](cfg)
+  override def datasource: Resource[IO, LightweightDatasourceModule.DS[IO]] =
+    Resource.liftF(AzureDatasource.mk[IO](cfg))
+  
+  override def gatherMultiple[A](g: Stream[IO, A]) = g.compile.toList
 }
 
 object AzureDatasourceSpec {

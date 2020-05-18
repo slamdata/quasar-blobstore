@@ -17,26 +17,26 @@
 package quasar.physical.blobstore
 
 import slamdata.Predef._
-import quasar.{EffectfulQSpec, ScalarStages}
+import quasar.ScalarStages
 import quasar.api.resource.{ResourceName, ResourcePath, ResourcePathType}
 import quasar.connector.{QueryResult, ResourceError}
-import quasar.connector.datasource.LightweightDatasourceModule
+import quasar.connector.datasource.{DatasourceSpec, LightweightDatasourceModule}
 import quasar.qscript.InterpretedRead
 
 import java.nio.charset.StandardCharsets
-import scala.concurrent.ExecutionContext.Implicits.global
 
 import cats.effect.Effect
 import cats.syntax.applicative._
-import cats.syntax.flatMap._
 import cats.syntax.functor._
 import org.specs2.matcher.MatchResult
+import fs2.Stream
+import cats.effect.Resource
 
-abstract class BlobstoreDatasourceSpec[F[_]: Effect] extends EffectfulQSpec[F] {
+abstract class BlobstoreDatasourceSpec[F[_]: Effect] extends DatasourceSpec[F, Stream[F, ?], ResourcePathType.Physical] {
 
   val F = Effect[F]
 
-  def datasource: F[LightweightDatasourceModule.DS[F]]
+  def datasource: Resource[F, LightweightDatasourceModule.DS[F]]
 
   val nonExistentPath =
     ResourcePath.root() / ResourceName("does") / ResourceName("not") / ResourceName("exist")
@@ -147,17 +147,17 @@ abstract class BlobstoreDatasourceSpec[F[_]: Effect] extends EffectfulQSpec[F] {
   def iRead[A](path: A): InterpretedRead[A] = InterpretedRead(path, ScalarStages.Id)
 
   def assertPathIsResource(
-      datasource: F[LightweightDatasourceModule.DS[F]],
+      datasource: Resource[F, LightweightDatasourceModule.DS[F]],
       path: ResourcePath,
       expected: Boolean)
       : F[MatchResult[Any]] =
-    datasource.flatMap(_.pathIsResource(path).use(b => F.pure(b must_=== expected)))
+    datasource.use(_.pathIsResource(path).use(b => F.pure(b must_=== expected)))
 
   def assertPathNotFound(
-      datasource: F[LightweightDatasourceModule.DS[F]],
+      datasource: Resource[F, LightweightDatasourceModule.DS[F]],
       path: ResourcePath)
       : F[MatchResult[Any]] =
-    datasource flatMap { ds =>
+    datasource use { ds =>
       F.attempt(ds.loadFull(iRead(path)).value.use(F.pure)) map {
         case Left(t) => ResourceError.throwableP.getOption(t) must_=== Some(ResourceError.pathNotFound(path))
         case Right(r) => ko(s"Unexpected QueryResult: $r")
@@ -165,19 +165,19 @@ abstract class BlobstoreDatasourceSpec[F[_]: Effect] extends EffectfulQSpec[F] {
     }
 
   def assertPrefixedChildPaths(path: ResourcePath, expected: List[(ResourceName, ResourcePathType)]) =
-    datasource.flatMap(_.prefixedChildPaths(path) use {
+    datasource.use(_.prefixedChildPaths(path) use {
       case Some(children) => children.compile.toList.map(_ must_== expected)
       case None => F.raiseError[MatchResult[Any]](new Exception(s"Failed to list resources under $path"))
     })
 
   def assertPrefixedChildPathsNone(path: ResourcePath) =
-    datasource.flatMap(_.prefixedChildPaths(path).use(r => F.pure(r must beNone)))
+    datasource.use(_.prefixedChildPaths(path).use(r => F.pure(r must beNone)))
 
   def assertResultBytes(
-      datasource: F[LightweightDatasourceModule.DS[F]],
+      datasource: Resource[F, LightweightDatasourceModule.DS[F]],
       path: ResourcePath,
       expected: Array[Byte]): F[MatchResult[Any]] =
-    datasource flatMap { ds =>
+    datasource use { ds =>
       ds.loadFull(iRead(path)).value use {
         case Some(QueryResult.Typed(_, data, ScalarStages.Id)) =>
           data.compile.to(Array).map(_ must_=== expected)
