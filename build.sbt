@@ -1,6 +1,6 @@
 import scala.collection.Seq
 
-ThisBuild / scalaVersion := "2.12.10"
+ThisBuild / scalaVersion := "2.12.11"
 
 publishAsOSSProject in ThisBuild := true
 
@@ -41,7 +41,8 @@ lazy val core = project
       "com.precog" %% "quasar-foundation" % managedVersions.value("precog-quasar") % Test classifier "tests",
       "org.specs2" %% "specs2-core" % specsVersion % Test,
       "org.specs2" %% "specs2-scalaz" % specsVersion % Test,
-      "org.specs2" %% "specs2-scalacheck" % specsVersion % Test))
+      "org.specs2" %% "specs2-scalacheck" % specsVersion % Test,
+      "com.codecommit" %% "cats-effect-testing-specs2" % "0.4.0"))
 
 lazy val azure = project
   .in(file("azure"))

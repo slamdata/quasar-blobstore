@@ -18,30 +18,27 @@ package quasar.physical
 package blobstore
 package azure
 
-import slamdata.Predef._
 import quasar.api.datasource.DatasourceType
 import quasar.blobstore.azure.{converters => _, _}
 import quasar.connector.MonadResourceErr
 
 import cats.effect.{ConcurrentEffect, ContextShift}
 import cats.syntax.functor._
-import com.microsoft.azure.storage.blob.models.BlobGetPropertiesResponse
+import com.azure.storage.blob.models.BlobProperties
 import eu.timepit.refined.auto._
 
 object AzureDatasource {
   val dsType: DatasourceType = DatasourceType("azure", 1L)
 
   def mk[F[_]: ConcurrentEffect: ContextShift: MonadResourceErr](cfg: AzureConfig)
-      : F[BlobstoreDatasource[F, BlobGetPropertiesResponse]] =
-    Azure.mkContainerUrl[F](cfg) map { c =>
-      BlobstoreDatasource[F, BlobGetPropertiesResponse](
+      : F[BlobstoreDatasource[F, BlobProperties]] =
+    Azure.mkContainerClient[F](cfg) map { c =>
+      BlobstoreDatasource[F, BlobProperties](
         dsType,
         cfg.format,
         AzureStatusService.mk(c.value),
         AzureListService.mk[F](c.value),
-        AzurePropsService.mk[F](c.value) mapF
-          handlers.recoverStorageException[F, Option[BlobGetPropertiesResponse]] map
-          (_.flatten),
-        AzureGetService.mk(c.value, cfg.maxQueueSize.getOrElse(MaxQueueSize.default)))
+        AzurePropsService.mk[F](c.value),
+        AzureGetService.mk(c.value))
     }
 }
