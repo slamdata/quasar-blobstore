@@ -10,7 +10,7 @@ libraryDependencies += "com.precog" %% "quasar-datasource-azure" % <version>
 
 Configuration for the Azure datasource has the following JSON format
 
-```json
+```
 {
   "container": String,
   "storageUrl": String,
