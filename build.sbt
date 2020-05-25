@@ -24,7 +24,7 @@ lazy val root = project
 val argonautRefinedVersion = "1.2.0-M11"
 
 val refinedVersion = "0.9.9"
-val nettyVersion = "4.1.44.Final"
+val nettyVersion = "4.1.49.Final"
 val slf4jVersion = "1.7.25"
 val specsVersion = "4.8.3"
 
