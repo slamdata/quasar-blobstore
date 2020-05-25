@@ -45,25 +45,25 @@ abstract class BlobstoreDatasourceSpec extends Specification with CatsIO {
 
   "prefixedChildPaths" >> {
 
-    "list nested children" in IO {
+    "list nested children" >> {
       assertPrefixedChildPaths(
         ResourcePath.root() / ResourceName("dir1") / ResourceName("dir2") / ResourceName("dir3"),
         List(ResourceName("flattenable.data") -> ResourcePathType.leafResource))
     }
 
-    "list nested children (alternative)" in IO {
+    "list nested children (alternative)" >> {
       assertPrefixedChildPaths(
         ResourcePath.root() / ResourceName("dir1") / ResourceName("dir2") / ResourceName("dir3") / ResourceName(""),
         List(ResourceName("flattenable.data") -> ResourcePathType.leafResource))
     }
 
-    "list nested children 2" in IO {
+    "list nested children 2" >> {
       assertPrefixedChildPaths(
         ResourcePath.root() / ResourceName("prefix3") / ResourceName("subprefix5"),
         List(ResourceName("cars2.data") -> ResourcePathType.leafResource))
     }
 
-    "list children at the root of the bucket" in IO {
+    "list children at the root of the bucket" >> {
       assertPrefixedChildPaths(
         ResourcePath.root(),
         List(
@@ -73,7 +73,7 @@ abstract class BlobstoreDatasourceSpec extends Specification with CatsIO {
           ResourceName("testdata") -> ResourcePathType.prefix))
     }
 
-    "list children at the root of the bucket (alternative)" in IO {
+    "list children at the root of the bucket (alternative)" >> {
       assertPrefixedChildPaths(
         ResourcePath.root() / ResourceName(""),
         List(
@@ -83,34 +83,34 @@ abstract class BlobstoreDatasourceSpec extends Specification with CatsIO {
           ResourceName("testdata") -> ResourcePathType.prefix))
     }
 
-    "return empty stream for non-prefix path" in IO {
+    "return empty stream for non-prefix path" >> {
       assertPrefixedChildPaths(
         ResourcePath.root() / ResourceName("extraSmallZips.data"),
         List())
     }
 
     // doesn't adhere to datasource spec see ch11270
-    "return empty stream for non-existing path" in IO {
+    "return empty stream for non-existing path" >> {
       assertPrefixedChildPaths(nonExistentPath, List())
     }
   }
 
   "evaluate" >> {
-    "read line-delimited JSON" in IO {
+    "read line-delimited JSON" >> {
       assertResultBytes(
         datasource,
         ResourcePath.root() / ResourceName("testdata") / ResourceName("lines.json"),
         "[1, 2]\n[3, 4]\n".getBytes(StandardCharsets.UTF_8))
     }
 
-    "read array JSON" in IO {
+    "read array JSON" >> {
       assertResultBytes(
         datasource,
         ResourcePath.root() / ResourceName("testdata") / ResourceName("array.json"),
         "[[1, 2], [3, 4]]\n".getBytes(StandardCharsets.UTF_8))
     }
 
-    "reading a non-existent file raises ResourceError.PathNotFound" in IO {
+    "reading a non-existent file raises ResourceError.PathNotFound" >> {
       assertPathNotFound(
         datasource,
         ResourcePath.root() / ResourceName("does-not-exist")
@@ -119,28 +119,28 @@ abstract class BlobstoreDatasourceSpec extends Specification with CatsIO {
   }
 
   "pathIsResource" >> {
-    "the root of a bucket with a trailing slash is not a resource" in IO {
+    "the root of a bucket with a trailing slash is not a resource" >> {
       assertPathIsResource(
         datasource,
         ResourcePath.root() / ResourceName(""),
         false)
     }
 
-    "the root of a bucket is not a resource" in IO {
+    "the root of a bucket is not a resource" >> {
       assertPathIsResource(
         datasource,
         ResourcePath.root(),
         false)
     }
 
-    "a prefix without contents is not a resource" in IO {
+    "a prefix without contents is not a resource" >> {
       assertPathIsResource(
         datasource,
         ResourcePath.root() / ResourceName("testdata"),
         false)
     }
 
-    "an actual file is a resource" in IO {
+    "an actual file is a resource" >> {
       assertPathIsResource(
         datasource,
         ResourcePath.root() / ResourceName("testdata") / ResourceName("array.json"),
