@@ -28,7 +28,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        scala: [2.12.10]
+        scala: [2.12.11]
         java: [adopt@1.8]
     runs-on: ${{ matrix.os }}
     steps:
@@ -119,7 +119,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        scala: [2.12.10]
+        scala: [2.12.11]
         java: [adopt@1.8]
     runs-on: ${{ matrix.os }}
     steps:
@@ -170,22 +170,22 @@ jobs:
           path: ~/.sbt
           key: ${{ runner.os }}-sbt-cache-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/build.properties') }}-${{ hashFiles('.versions.json') }}
 
-      - name: Download target directory 'target' (2.12.10)
+      - name: Download target directory 'target' (2.12.11)
         uses: actions/download-artifact@v1
         with:
-          name: target-${{ matrix.os }}-2.12.10-${{ matrix.java }}-target
+          name: target-${{ matrix.os }}-2.12.11-${{ matrix.java }}-target
           path: target
 
-      - name: Download target directory 'azure/target' (2.12.10)
+      - name: Download target directory 'azure/target' (2.12.11)
         uses: actions/download-artifact@v1
         with:
-          name: target-${{ matrix.os }}-2.12.10-${{ matrix.java }}-azure_target
+          name: target-${{ matrix.os }}-2.12.11-${{ matrix.java }}-azure_target
           path: azure/target
 
-      - name: Download target directory 'core/target' (2.12.10)
+      - name: Download target directory 'core/target' (2.12.11)
         uses: actions/download-artifact@v1
         with:
-          name: target-${{ matrix.os }}-2.12.10-${{ matrix.java }}-core_target
+          name: target-${{ matrix.os }}-2.12.11-${{ matrix.java }}-core_target
           path: core/target
 
       - name: Download target directory 'project/target'
@@ -209,7 +209,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        scala: [2.12.10]
+        scala: [2.12.11]
         java: [adopt@1.8]
     runs-on: ${{ matrix.os }}
     steps:

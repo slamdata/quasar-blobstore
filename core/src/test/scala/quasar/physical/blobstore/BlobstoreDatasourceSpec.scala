@@ -17,26 +17,23 @@
 package quasar.physical.blobstore
 
 import slamdata.Predef._
-import quasar.{EffectfulQSpec, ScalarStages}
+import quasar.ScalarStages
 import quasar.api.resource.{ResourceName, ResourcePath, ResourcePathType}
 import quasar.connector.{QueryResult, ResourceError}
 import quasar.connector.datasource.LightweightDatasourceModule
 import quasar.qscript.InterpretedRead
 
 import java.nio.charset.StandardCharsets
-import scala.concurrent.ExecutionContext.Implicits.global
 
-import cats.effect.Effect
+import cats.effect.{Effect, IO, Resource}
+import cats.effect.testing.specs2.CatsIO
 import cats.syntax.applicative._
-import cats.syntax.flatMap._
-import cats.syntax.functor._
 import org.specs2.matcher.MatchResult
+import org.specs2.mutable.Specification
 
-abstract class BlobstoreDatasourceSpec[F[_]: Effect] extends EffectfulQSpec[F] {
+abstract class BlobstoreDatasourceSpec extends Specification with CatsIO {
 
-  val F = Effect[F]
-
-  def datasource: F[LightweightDatasourceModule.DS[F]]
+  def datasource: Resource[IO, LightweightDatasourceModule.DS[IO]]
 
   val nonExistentPath =
     ResourcePath.root() / ResourceName("does") / ResourceName("not") / ResourceName("exist")
@@ -48,25 +45,25 @@ abstract class BlobstoreDatasourceSpec[F[_]: Effect] extends EffectfulQSpec[F] {
 
   "prefixedChildPaths" >> {
 
-    "list nested children" >>* {
+    "list nested children" >> {
       assertPrefixedChildPaths(
         ResourcePath.root() / ResourceName("dir1") / ResourceName("dir2") / ResourceName("dir3"),
         List(ResourceName("flattenable.data") -> ResourcePathType.leafResource))
     }
 
-    "list nested children (alternative)" >>* {
+    "list nested children (alternative)" >> {
       assertPrefixedChildPaths(
         ResourcePath.root() / ResourceName("dir1") / ResourceName("dir2") / ResourceName("dir3") / ResourceName(""),
         List(ResourceName("flattenable.data") -> ResourcePathType.leafResource))
     }
 
-    "list nested children 2" >>* {
+    "list nested children 2" >> {
       assertPrefixedChildPaths(
         ResourcePath.root() / ResourceName("prefix3") / ResourceName("subprefix5"),
         List(ResourceName("cars2.data") -> ResourcePathType.leafResource))
     }
 
-    "list children at the root of the bucket" >>* {
+    "list children at the root of the bucket" >> {
       assertPrefixedChildPaths(
         ResourcePath.root(),
         List(
@@ -76,7 +73,7 @@ abstract class BlobstoreDatasourceSpec[F[_]: Effect] extends EffectfulQSpec[F] {
           ResourceName("testdata") -> ResourcePathType.prefix))
     }
 
-    "list children at the root of the bucket (alternative)" >>* {
+    "list children at the root of the bucket (alternative)" >> {
       assertPrefixedChildPaths(
         ResourcePath.root() / ResourceName(""),
         List(
@@ -86,27 +83,34 @@ abstract class BlobstoreDatasourceSpec[F[_]: Effect] extends EffectfulQSpec[F] {
           ResourceName("testdata") -> ResourcePathType.prefix))
     }
 
-    "return none for non-existing path" >>* {
-      assertPrefixedChildPathsNone(nonExistentPath)
+    "return empty stream for non-prefix path" >> {
+      assertPrefixedChildPaths(
+        ResourcePath.root() / ResourceName("extraSmallZips.data"),
+        List())
+    }
+
+    // doesn't adhere to datasource spec see ch11270
+    "return empty stream for non-existing path" >> {
+      assertPrefixedChildPaths(nonExistentPath, List())
     }
   }
 
   "evaluate" >> {
-    "read line-delimited JSON" >>* {
+    "read line-delimited JSON" >> {
       assertResultBytes(
         datasource,
         ResourcePath.root() / ResourceName("testdata") / ResourceName("lines.json"),
         "[1, 2]\n[3, 4]\n".getBytes(StandardCharsets.UTF_8))
     }
 
-    "read array JSON" >>* {
+    "read array JSON" >> {
       assertResultBytes(
         datasource,
         ResourcePath.root() / ResourceName("testdata") / ResourceName("array.json"),
         "[[1, 2], [3, 4]]\n".getBytes(StandardCharsets.UTF_8))
     }
 
-    "reading a non-existent file raises ResourceError.PathNotFound" >>* {
+    "reading a non-existent file raises ResourceError.PathNotFound" >> {
       assertPathNotFound(
         datasource,
         ResourcePath.root() / ResourceName("does-not-exist")
@@ -115,28 +119,28 @@ abstract class BlobstoreDatasourceSpec[F[_]: Effect] extends EffectfulQSpec[F] {
   }
 
   "pathIsResource" >> {
-    "the root of a bucket with a trailing slash is not a resource" >>* {
+    "the root of a bucket with a trailing slash is not a resource" >> {
       assertPathIsResource(
         datasource,
         ResourcePath.root() / ResourceName(""),
         false)
     }
 
-    "the root of a bucket is not a resource" >>* {
+    "the root of a bucket is not a resource" >> {
       assertPathIsResource(
         datasource,
         ResourcePath.root(),
         false)
     }
 
-    "a prefix without contents is not a resource" >>* {
+    "a prefix without contents is not a resource" >> {
       assertPathIsResource(
         datasource,
         ResourcePath.root() / ResourceName("testdata"),
         false)
     }
 
-    "an actual file is a resource" >>* {
+    "an actual file is a resource" >> {
       assertPathIsResource(
         datasource,
         ResourcePath.root() / ResourceName("testdata") / ResourceName("array.json"),
@@ -147,43 +151,43 @@ abstract class BlobstoreDatasourceSpec[F[_]: Effect] extends EffectfulQSpec[F] {
   def iRead[A](path: A): InterpretedRead[A] = InterpretedRead(path, ScalarStages.Id)
 
   def assertPathIsResource(
-      datasource: F[LightweightDatasourceModule.DS[F]],
+      datasource: Resource[IO, LightweightDatasourceModule.DS[IO]],
       path: ResourcePath,
       expected: Boolean)
-      : F[MatchResult[Any]] =
-    datasource.flatMap(_.pathIsResource(path).use(b => F.pure(b must_=== expected)))
+      : IO[MatchResult[Any]] =
+    datasource.use(_.pathIsResource(path).use(b => IO.pure(b must_=== expected)))
 
   def assertPathNotFound(
-      datasource: F[LightweightDatasourceModule.DS[F]],
+      datasource: Resource[IO, LightweightDatasourceModule.DS[IO]],
       path: ResourcePath)
-      : F[MatchResult[Any]] =
-    datasource flatMap { ds =>
-      F.attempt(ds.loadFull(iRead(path)).value.use(F.pure)) map {
+      : IO[MatchResult[Any]] =
+    datasource use { ds =>
+      Effect[IO].attempt(ds.loadFull(iRead(path)).value.use(IO.pure)) map {
         case Left(t) => ResourceError.throwableP.getOption(t) must_=== Some(ResourceError.pathNotFound(path))
         case Right(r) => ko(s"Unexpected QueryResult: $r")
       }
     }
 
   def assertPrefixedChildPaths(path: ResourcePath, expected: List[(ResourceName, ResourcePathType)]) =
-    datasource.flatMap(_.prefixedChildPaths(path) use {
+    datasource.use(_.prefixedChildPaths(path) use {
       case Some(children) => children.compile.toList.map(_ must_== expected)
-      case None => F.raiseError[MatchResult[Any]](new Exception(s"Failed to list resources under $path"))
+      case None => IO.raiseError[MatchResult[Any]](new Exception(s"Failed to list resources under $path"))
     })
 
   def assertPrefixedChildPathsNone(path: ResourcePath) =
-    datasource.flatMap(_.prefixedChildPaths(path).use(r => F.pure(r must beNone)))
+    datasource.use(_.prefixedChildPaths(path).use(r => IO.pure(r must beNone)))
 
   def assertResultBytes(
-      datasource: F[LightweightDatasourceModule.DS[F]],
+      datasource: Resource[IO, LightweightDatasourceModule.DS[IO]],
       path: ResourcePath,
-      expected: Array[Byte]): F[MatchResult[Any]] =
-    datasource flatMap { ds =>
+      expected: Array[Byte]): IO[MatchResult[Any]] =
+    datasource use { ds =>
       ds.loadFull(iRead(path)).value use {
         case Some(QueryResult.Typed(_, data, ScalarStages.Id)) =>
           data.compile.to(Array).map(_ must_=== expected)
 
         case _ =>
-          ko("Unexpected QueryResult").pure[F]
+          ko("Unexpected QueryResult").pure[IO]
       }
     }
 }
