@@ -19,7 +19,7 @@ package quasar.physical.blobstore.azure
 import slamdata.Predef._
 
 import quasar.RateLimiting
-import quasar.api.datasource.DatasourceError.InitializationError
+import quasar.api.datasource.DatasourceError.{ConfigurationError, InitializationError}
 import quasar.api.datasource.{DatasourceError, DatasourceType}
 import quasar.blobstore.azure._, json._
 import quasar.blobstore.BlobstoreStatus
@@ -112,4 +112,7 @@ object AzureDatasourceModule extends LightweightDatasourceModule {
     case Right(cfg) =>
       cfg.copy(credentials = cfg.credentials as redactedCreds).asJson
   }
+
+  override def reconfigure(original: Json, patch: Json): Either[ConfigurationError[Json], Json] =
+    Right(patch)
 }
