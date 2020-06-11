@@ -19,9 +19,6 @@ package quasar.physical.blobstore.azure
 import slamdata.Predef._
 import quasar.blobstore.azure._
 import quasar.connector.DataFormat
-import quasar.api.datasource.DatasourceType
-import quasar.api.datasource.DatasourceError.InvalidConfiguration
-import scalaz.NonEmptyList
 
 final case class AzureConfig(
     override val containerName: ContainerName,
@@ -38,20 +35,15 @@ final case class AzureConfig(
     case Some(cs) => !(cs.accountName.value.isEmpty && cs.accountKey.value.isEmpty)
   }
 
-  def reconfigureNonSensitive(patch: AzureConfig, kind: DatasourceType)
-      : Either[InvalidConfiguration[AzureConfig], AzureConfig] =
-    if (patch.isSensitive) {
-      Left(InvalidConfiguration[AzureConfig](
-        kind,
-        patch.sanitize,
-        NonEmptyList("Target configuration contains sensitive information.")))
-    } else {
+  def reconfigureNonSensitive(patch: AzureConfig): Either[AzureConfig, AzureConfig] =
+    if (patch.isSensitive)
+      Left(patch.sanitize)
+    else
       Right(copy(
         containerName = patch.containerName,
         storageUrl = patch.storageUrl,
         maxQueueSize = patch.maxQueueSize,
         format = patch.format))
-    }
 }
 
 object AzureConfig {

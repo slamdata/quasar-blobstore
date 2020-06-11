@@ -19,12 +19,11 @@ package quasar.physical.blobstore.azure
 import slamdata.Predef._
 
 import quasar.RateLimiting
-import quasar.api.datasource.DatasourceError.{ConfigurationError, InitializationError, MalformedConfiguration}
-import quasar.api.datasource.{DatasourceError, DatasourceType}
-import quasar.physical.blobstore.azure.json._
+import quasar.api.datasource.{DatasourceError, DatasourceType}, DatasourceError._
 import quasar.blobstore.BlobstoreStatus
 import quasar.connector.{ByteStore, MonadResourceErr}
 import quasar.connector.datasource.LightweightDatasourceModule
+import quasar.physical.blobstore.azure.json._
 
 import java.net.{MalformedURLException, UnknownHostException}
 import scala.concurrent.ExecutionContext
@@ -124,11 +123,12 @@ object AzureDatasourceModule extends LightweightDatasourceModule {
             sanitizeConfig(patch),
             "Target configuration in reconfiguration is malformed."))
 
-      res <- originalConfig.reconfigureNonSensitive(patchConfig, kind) match {
-        case Left(err) => Left(err.copy(config = err.config.asJson))
-        case Right(config) => Right(config.asJson)
-      }
+      reconfig <- originalConfig.reconfigureNonSensitive(patchConfig).leftMap(c =>
+        InvalidConfiguration[Json](
+          kind,
+          c.asJson,
+          NonEmptyList("Target configuration contains sensitive information.")))            
 
-    } yield res
+    } yield reconfig.asJson
   }
 }
