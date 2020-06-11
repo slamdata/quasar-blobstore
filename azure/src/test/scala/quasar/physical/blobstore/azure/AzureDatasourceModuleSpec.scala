@@ -19,10 +19,11 @@ package quasar.physical.blobstore.azure
 import slamdata.Predef._
 
 import quasar.{RateLimiter, NoopRateLimitUpdater}
-import quasar.api.datasource.DatasourceError
+import quasar.api.datasource.DatasourceError, DatasourceError._
 import quasar.connector.{ByteStore, DataFormat}
 import quasar.blobstore.azure._
 
+import java.util.UUID
 import scala.concurrent.ExecutionContext
 
 import argonaut._, Argonaut._
@@ -32,7 +33,7 @@ import cats.instances.either._
 import cats.syntax.functor._
 import eu.timepit.refined.auto._
 import org.specs2.mutable.Specification
-import java.util.UUID
+import scalaz.NonEmptyList
 
 class AzureDatasourceModuleSpec extends Specification {
   import AzureDatasourceSpec._
@@ -157,4 +158,86 @@ class AzureDatasourceModuleSpec extends Specification {
     }
   }
 
+  "reconfiguration" >> {
+
+    val origWithCreds = Json.obj(
+      "credentials" -> Json.obj(
+        "accountName" -> jString("myaccount"),
+        "accountKey" -> jString("mykey")),
+      "container" -> jString("mycontainer"),
+      "storageUrl" -> jString("url"),
+      "maxQueueSize" -> jNumber(10),
+      "format" -> Json.obj(
+        "type" -> jString("json"),
+        "variant" -> jString("line-delimited"),
+        "precise" -> jBool(false)))
+
+    val origNoCreds = Json.obj(
+      "container" -> jString("mycontainer"),
+      "storageUrl" -> jString("publicurl"),
+      "maxQueueSize" -> jNumber(10),
+      "format" -> Json.obj(
+        "type" -> jString("json"),
+        "variant" -> jString("line-delimited"),
+        "precise" -> jBool(false)))
+
+    val patch = Json.obj(
+      "credentials" -> jNull,
+      "container" -> jString("patched mycontainer"),
+      "storageUrl" -> jString("patched url"),
+      "maxQueueSize" -> jNumber(42),
+      "format" -> Json.obj(
+        "type" -> jString("json"),
+        "variant" -> jString("array-wrapped"),
+        "precise" -> jBool(false)))
+
+    "replace non-sensitive part of config with patch when original has sensitive info" >> {
+
+      val expected = Json.obj(
+        "credentials" -> Json.obj(
+          "accountName" -> jString("myaccount"),
+          "accountKey" -> jString("mykey")),
+        "container" -> jString("patched mycontainer"),
+        "storageUrl" -> jString("patched url"),
+        "maxQueueSize" -> jNumber(42),
+        "format" -> Json.obj(
+          "type" -> jString("json"),
+          "variant" -> jString("array-wrapped"),
+          "precise" -> jBool(false)))
+
+      AzureDatasourceModule.reconfigure(origWithCreds, patch) must beRight(expected)
+    }
+
+    "replace config with patch when original has no sensitive info" >> {
+
+      AzureDatasourceModule.reconfigure(origNoCreds, patch) must beRight(patch)
+    }
+
+    "fails with invalid configuration error if patch has sensitive information" >> {
+
+      AzureDatasourceModule.reconfigure(origNoCreds, origWithCreds) must beLeft(
+        InvalidConfiguration(
+          AzureDatasourceModule.kind,
+          AzureDatasourceModule.sanitizeConfig(origWithCreds),
+          NonEmptyList("Target configuration contains sensitive information.")))
+    }
+
+    "fails with malformed configuration error if patch is malformed" >> {
+
+      AzureDatasourceModule.reconfigure(origNoCreds, Json.obj()) must beLeft(
+        MalformedConfiguration(
+          AzureDatasourceModule.kind,
+          Json.obj(),
+          "Target configuration in reconfiguration is malformed."))
+    }
+
+    "fails with malformed configuration error if orig is malformed" >> {
+
+      AzureDatasourceModule.reconfigure(Json.obj(), patch) must beLeft(
+        MalformedConfiguration(
+          AzureDatasourceModule.kind,
+          Json.obj(),
+          "Source configuration in reconfiguration is malformed."))
+    }
+  }
 }

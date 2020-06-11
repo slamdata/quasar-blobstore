@@ -16,13 +16,48 @@
 
 package quasar.physical.blobstore.azure
 
-import slamdata.Predef.Option
+import slamdata.Predef._
 import quasar.blobstore.azure._
 import quasar.connector.DataFormat
+import quasar.api.datasource.DatasourceType
+import quasar.api.datasource.DatasourceError.InvalidConfiguration
+import scalaz.NonEmptyList
 
 final case class AzureConfig(
     override val containerName: ContainerName,
     override val credentials: Option[AzureCredentials.SharedKey],
     override val storageUrl: StorageUrl,
     override val maxQueueSize: Option[MaxQueueSize],
-    format: DataFormat) extends Config
+    format: DataFormat) extends Config {
+
+  def sanitize: AzureConfig = copy(
+    credentials = credentials.map(_ => AzureConfig.RedactedCreds))
+
+  def isSensitive: Boolean = credentials match {
+    case None => false
+    case Some(cs) => !(cs.accountName.value.isEmpty && cs.accountKey.value.isEmpty)
+  }
+
+  def reconfigureNonSensitive(patch: AzureConfig, kind: DatasourceType)
+      : Either[InvalidConfiguration[AzureConfig], AzureConfig] =
+    if (patch.isSensitive) {
+      Left(InvalidConfiguration[AzureConfig](
+        kind,
+        patch.sanitize,
+        NonEmptyList("Target configuration contains sensitive information.")))
+    } else {
+      Right(copy(
+        containerName = patch.containerName,
+        storageUrl = patch.storageUrl,
+        maxQueueSize = patch.maxQueueSize,
+        format = patch.format))
+    }
+}
+
+object AzureConfig {
+  val RedactedCreds =
+    AzureCredentials.SharedKey(
+      AccountName("<REDACTED>"),
+      AccountKey("<REDACTED>"))
+
+}
