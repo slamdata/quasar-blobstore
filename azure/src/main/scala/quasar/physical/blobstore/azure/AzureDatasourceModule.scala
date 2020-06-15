@@ -19,12 +19,11 @@ package quasar.physical.blobstore.azure
 import slamdata.Predef._
 
 import quasar.RateLimiting
-import quasar.api.datasource.DatasourceError.{ConfigurationError, InitializationError}
-import quasar.api.datasource.{DatasourceError, DatasourceType}
-import quasar.blobstore.azure._, json._
+import quasar.api.datasource.{DatasourceError, DatasourceType}, DatasourceError._
 import quasar.blobstore.BlobstoreStatus
 import quasar.connector.{ByteStore, MonadResourceErr}
 import quasar.connector.datasource.LightweightDatasourceModule
+import quasar.physical.blobstore.azure.json._
 
 import java.net.{MalformedURLException, UnknownHostException}
 import scala.concurrent.ExecutionContext
@@ -38,14 +37,9 @@ import cats.syntax.applicative._
 import cats.syntax.either._
 import cats.syntax.flatMap._
 import cats.syntax.functor._
-import cats.instances.option._
 import scalaz.NonEmptyList
 
 object AzureDatasourceModule extends LightweightDatasourceModule {
-  private val redactedCreds =
-    AzureCredentials.SharedKey(
-      AccountName("<REDACTED>"),
-      AccountKey("<REDACTED>"))
 
   override def kind: DatasourceType = AzureDatasource.dsType
 
@@ -110,9 +104,31 @@ object AzureDatasourceModule extends LightweightDatasourceModule {
     case Left(_) =>
       config
     case Right(cfg) =>
-      cfg.copy(credentials = cfg.credentials as redactedCreds).asJson
+      cfg.sanitize.asJson
   }
 
-  override def reconfigure(original: Json, patch: Json): Either[ConfigurationError[Json], Json] =
-    Right(patch)
+  override def reconfigure(original: Json, patch: Json): Either[ConfigurationError[Json], Json] = {
+    for {
+      originalConfig <-
+        original.as[AzureConfig].result.leftMap(_ =>
+          MalformedConfiguration[Json](
+            kind,
+            sanitizeConfig(original),
+            "Source configuration in reconfiguration is malformed."))
+
+      patchConfig <-
+        patch.as[AzureConfig].result.leftMap(_ =>
+          MalformedConfiguration[Json](
+            kind,
+            sanitizeConfig(patch),
+            "Target configuration in reconfiguration is malformed."))
+
+      reconfig <- originalConfig.reconfigureNonSensitive(patchConfig).leftMap(c =>
+        InvalidConfiguration[Json](
+          kind,
+          c.asJson,
+          NonEmptyList("Target configuration contains sensitive information.")))            
+
+    } yield reconfig.asJson
+  }
 }
