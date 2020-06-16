@@ -19,6 +19,7 @@ package quasar.physical.blobstore.azure
 import slamdata.Predef._
 
 import quasar.{RateLimiter, NoopRateLimitUpdater}
+import quasar.connector.datasource.Reconfiguration
 import quasar.api.datasource.DatasourceError, DatasourceError._
 import quasar.connector.{ByteStore, DataFormat}
 import quasar.blobstore.azure._
@@ -205,12 +206,12 @@ class AzureDatasourceModuleSpec extends Specification {
           "variant" -> jString("array-wrapped"),
           "precise" -> jBool(false)))
 
-      AzureDatasourceModule.reconfigure(origWithCreds, patch) must beRight(expected)
+      AzureDatasourceModule.reconfigure(origWithCreds, patch) must beRight((Reconfiguration.Reset, expected))
     }
 
     "replace config with patch when original has no sensitive info" >> {
 
-      AzureDatasourceModule.reconfigure(origNoCreds, patch) must beRight(patch)
+      AzureDatasourceModule.reconfigure(origNoCreds, patch) must beRight((Reconfiguration.Reset, patch))
     }
 
     "fails with invalid configuration error if patch has sensitive information" >> {
