@@ -22,7 +22,7 @@ import quasar.RateLimiting
 import quasar.api.datasource.{DatasourceError, DatasourceType}, DatasourceError._
 import quasar.blobstore.BlobstoreStatus
 import quasar.connector.{ByteStore, MonadResourceErr}
-import quasar.connector.datasource.LightweightDatasourceModule
+import quasar.connector.datasource.{LightweightDatasourceModule, Reconfiguration}
 import quasar.physical.blobstore.azure.json._
 
 import java.net.{MalformedURLException, UnknownHostException}
@@ -33,10 +33,7 @@ import argonaut.{Json, Argonaut}, Argonaut._
 import cats.ApplicativeError
 import cats.effect.{ConcurrentEffect, ContextShift, Resource, Timer}
 import cats.kernel.Hash
-import cats.syntax.applicative._
-import cats.syntax.either._
-import cats.syntax.flatMap._
-import cats.syntax.functor._
+import cats.implicits._
 import scalaz.NonEmptyList
 
 object AzureDatasourceModule extends LightweightDatasourceModule {
@@ -107,8 +104,8 @@ object AzureDatasourceModule extends LightweightDatasourceModule {
       cfg.sanitize.asJson
   }
 
-  override def reconfigure(original: Json, patch: Json): Either[ConfigurationError[Json], Json] = {
-    for {
+  override def reconfigure(original: Json, patch: Json): Either[ConfigurationError[Json], (Reconfiguration, Json)] = {
+    val back = for {
       originalConfig <-
         original.as[AzureConfig].result.leftMap(_ =>
           MalformedConfiguration[Json](
@@ -127,8 +124,10 @@ object AzureDatasourceModule extends LightweightDatasourceModule {
         InvalidConfiguration[Json](
           kind,
           c.asJson,
-          NonEmptyList("Target configuration contains sensitive information.")))            
+          NonEmptyList("Target configuration contains sensitive information.")))
 
     } yield reconfig.asJson
+
+    back.tupleLeft(Reconfiguration.Reset)
   }
 }
