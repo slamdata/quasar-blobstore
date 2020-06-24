@@ -25,7 +25,6 @@ import quasar.connector.MonadResourceErr
 import cats.effect.{ConcurrentEffect, ContextShift}
 import cats.syntax.functor._
 import com.azure.storage.blob.models.BlobProperties
-import eu.timepit.refined.auto._
 
 object AzureDatasource {
   val dsType: DatasourceType = DatasourceType("azure", 1L)

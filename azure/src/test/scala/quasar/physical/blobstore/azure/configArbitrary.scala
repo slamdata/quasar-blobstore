@@ -21,9 +21,6 @@ import quasar.blobstore.azure._
 import quasar.connector.{DataFormat => DF}
 
 import org.scalacheck._, Arbitrary._
-import eu.timepit.refined.api.Refined
-import eu.timepit.refined.numeric.Positive
-import eu.timepit.refined.scalacheck.numeric._
 
 object configArbitrary {
 
@@ -33,7 +30,7 @@ object configArbitrary {
   } yield AzureCredentials.SharedKey(n, k)
 
   val genMaxQueueSize: Gen[MaxQueueSize] =
-    arbitrary[Int Refined Positive].map(MaxQueueSize(_))
+    Gen.choose(1, Int.MaxValue).map(MaxQueueSize(_).get)
 
   val genAzureConfig: Gen[AzureConfig] = for {
     c <- arbitrary[String].map(ContainerName)
