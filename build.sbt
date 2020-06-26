@@ -21,9 +21,6 @@ lazy val root = project
   .settings(noPublishSettings)
   .aggregate(core, azure)
 
-val argonautRefinedVersion = "1.2.0-M11"
-
-val refinedVersion = "0.9.9"
 val slf4jVersion = "1.7.25"
 val specsVersion = "4.8.3"
 
@@ -61,8 +58,6 @@ lazy val azure = project
       * `datasourceQuasarVersion`.
       */
     quasarPluginDependencies ++= Seq(
-      "com.github.alexarchambault" %% "argonaut-refined_6.2" % argonautRefinedVersion,
       "com.precog" %% "async-blobstore-azure" % managedVersions.value("precog-async-blobstore"),
-      "eu.timepit" %% "refined-scalacheck" % refinedVersion,
       "org.slf4j" % "slf4j-log4j12" % slf4jVersion % Test))
   .enablePlugins(QuasarPlugin)

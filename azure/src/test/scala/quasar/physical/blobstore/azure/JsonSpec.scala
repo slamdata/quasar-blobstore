@@ -21,7 +21,6 @@ import quasar.blobstore.azure._, configArbitrary._, json._
 import quasar.connector.{DataFormat => DF}
 
 import argonaut._, Argonaut._
-import eu.timepit.refined.auto._
 import org.specs2.ScalaCheck
 import org.specs2.mutable.Specification
 
@@ -46,7 +45,7 @@ class JsonSpec extends Specification with ScalaCheck {
           ContainerName("mycontainer"),
           Some(AzureCredentials.SharedKey(AccountName("myname"), AccountKey("mykey"))),
           Azure.mkStdStorageUrl(AccountName("myaccount")),
-          Some(MaxQueueSize(10)),
+          MaxQueueSize(10),
           DF.ldjson))
     }
 
@@ -66,7 +65,7 @@ class JsonSpec extends Specification with ScalaCheck {
           ContainerName("mycontainer"),
           None,
           Azure.mkStdStorageUrl(AccountName("myaccount")),
-          Some(MaxQueueSize(10)),
+          MaxQueueSize(10),
           DF.json))
     }
 

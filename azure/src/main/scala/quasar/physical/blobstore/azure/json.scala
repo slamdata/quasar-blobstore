@@ -21,14 +21,19 @@ import slamdata.Predef._
 import quasar.blobstore.azure._
 import quasar.connector.{CompressionScheme, DataFormat}, DataFormat._
 
-import argonaut._, Argonaut._, ArgonautRefined._
+import argonaut._, Argonaut._
 
 object json {
   implicit val decodeContainerName: DecodeJson[ContainerName] = jdecode1(ContainerName(_))
   implicit val decodeStorageUrl: DecodeJson[StorageUrl] = jdecode1(StorageUrl(_))
   implicit val decodeAccountName: DecodeJson[AccountName] = jdecode1(AccountName(_))
   implicit val decodeAccountKey: DecodeJson[AccountKey] = jdecode1(AccountKey(_))
-  implicit val decodeMaxQueueSize: DecodeJson[MaxQueueSize] = jdecode1(MaxQueueSize(_))
+  implicit val decodeMaxQueueSize: DecodeJson[MaxQueueSize] =
+    DecodeJson(c =>
+      DecodeJson.of[Int].decode(c).flatMap(i =>
+        MaxQueueSize(i).fold(
+          DecodeResult.fail[MaxQueueSize](s"Failed to decode max queue size: $i", c.history))(
+          DecodeResult.ok(_))))
 
   implicit val encodeContainerName: EncodeJson[ContainerName] = jencode1(_.value)
   implicit val encodeStorageUrl: EncodeJson[StorageUrl] = jencode1(_.value)

@@ -32,7 +32,6 @@ import cats.effect.{ContextShift, IO, Timer}
 import cats.kernel.instances.uuid._
 import cats.instances.either._
 import cats.syntax.functor._
-import eu.timepit.refined.auto._
 import org.specs2.mutable.Specification
 import scalaz.NonEmptyList
 
@@ -59,7 +58,7 @@ class AzureDatasourceModuleSpec extends Specification {
       ("container" := Json.jString(cfg.containerName.value)) ->:
       ("credentials" := cfg.credentials.fold(jNull)(credToJson)) ->:
       ("storageUrl" := Json.jString(cfg.storageUrl.value)) ->:
-      ("maxQueueSize" := cfg.maxQueueSize.fold(jNull)(qs => Json.jNumber(qs.value.value))) ->:
+      ("maxQueueSize" := cfg.maxQueueSize.fold(jNull)(qs => Json.jNumber(qs.value))) ->:
       cfg.format.asJson
 
     if (stripNulls)
@@ -105,7 +104,7 @@ class AzureDatasourceModuleSpec extends Specification {
         ContainerName("mycontainer"),
         Some(AzureCredentials.SharedKey(AccountName("myname"), AccountKey("mykey"))),
         Azure.mkStdStorageUrl(AccountName("myaccount")),
-        Some(MaxQueueSize(10)),
+        MaxQueueSize(10),
         DataFormat.json)
 
       AzureDatasourceModule.sanitizeConfig(cfgToJson(cfg)) must_===
@@ -113,7 +112,7 @@ class AzureDatasourceModuleSpec extends Specification {
           ContainerName("mycontainer"),
           Some(AzureCredentials.SharedKey(AccountName("<REDACTED>"), AccountKey("<REDACTED>"))),
           Azure.mkStdStorageUrl(AccountName("myaccount")),
-          Some(MaxQueueSize(10)),
+          MaxQueueSize(10),
           DataFormat.json))
     }
 
