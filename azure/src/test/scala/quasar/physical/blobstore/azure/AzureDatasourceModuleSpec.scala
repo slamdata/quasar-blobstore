@@ -158,6 +158,35 @@ class AzureDatasourceModuleSpec extends Specification {
     }
   }
 
+  "migration" >> {
+    "migrate config as itself" >> {
+      val config = Json.obj(
+        "credentials" -> Json.obj(
+          "accountName" -> jString("myaccount"),
+          "accountKey" -> jString("mykey")),
+        "container" -> jString("mycontainer"),
+        "storageUrl" -> jString("url"),
+        "maxQueueSize" -> jNumber(10),
+        "format" -> Json.obj(
+          "type" -> jString("json"),
+          "variant" -> jString("line-delimited"),
+          "precise" -> jBool(false)))
+
+      AzureDatasourceModule.migrateConfig[IO](config).unsafeRunSync() must beRight(config)
+    }
+
+    "fail to migrate malformed config" >> {
+      val malformed = "malformed".asJson
+
+      val error = MalformedConfiguration(
+        AzureDatasourceModule.kind,
+        malformed,
+        "Configuration to migrate is malformed.")
+
+      AzureDatasourceModule.migrateConfig[IO](malformed).unsafeRunSync() must beLeft(error)
+    }
+  }
+
   "reconfiguration" >> {
 
     val origWithCreds = Json.obj(
