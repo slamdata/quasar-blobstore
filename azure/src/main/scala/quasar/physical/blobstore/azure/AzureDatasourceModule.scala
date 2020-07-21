@@ -31,7 +31,7 @@ import scala.util.control.NonFatal
 
 import argonaut.{Json, Argonaut}, Argonaut._
 import cats.ApplicativeError
-import cats.effect.{ConcurrentEffect, ContextShift, Resource, Timer}
+import cats.effect.{ConcurrentEffect, ContextShift, Resource, Sync, Timer}
 import cats.kernel.Hash
 import cats.implicits._
 import scalaz.NonEmptyList
@@ -103,6 +103,10 @@ object AzureDatasourceModule extends LightweightDatasourceModule {
     case Right(cfg) =>
       cfg.sanitize.asJson
   }
+
+
+  override def migrateConfig[F[_]: Sync](config: Json): F[Either[ConfigurationError[Json], Json]] =
+    Sync[F].pure(Right(config))
 
   override def reconfigure(original: Json, patch: Json): Either[ConfigurationError[Json], (Reconfiguration, Json)] = {
     val back = for {
