@@ -49,7 +49,7 @@ class AzureDatasourceModuleSpec extends Specification {
 
   private def init(j: Json) =
     RateLimiter[IO, UUID](1.0, IO.delay(UUID.randomUUID()), NoopRateLimitUpdater[IO, UUID]).flatMap(rl =>
-      AzureDatasourceModule.lightweightDatasource[IO, UUID](j, rl, ByteStore.void[IO])
+      AzureDatasourceModule.lightweightDatasource[IO, UUID](j, rl, ByteStore.void[IO], _ => IO(None))
         .use(r => IO.pure(r.void)))
         .unsafeRunSync()
 
