@@ -28,7 +28,49 @@ class JsonSpec extends Specification with ScalaCheck {
 
   "json decoder" >> {
 
-    "succeeds reading config with credentials" >> {
+    "succeeds reading config with sharedkey credentials" >> {
+      val s =
+        """
+          |{
+          |  "container": "mycontainer",
+          |  "credentials": { "auth": "sharedKey", "accountName": "myname", "accountKey": "mykey" },
+          |  "storageUrl": "https://myaccount.blob.core.windows.net/",
+          |  "maxQueueSize": 10,
+          |  "resourceType": "ldjson"
+          |}
+        """.stripMargin
+
+      s.decodeOption[AzureConfig] must_=== Some(
+        AzureConfig(
+          ContainerName("mycontainer"),
+          Some(AzureCredentials.SharedKey(AccountName("myname"), AccountKey("mykey"))),
+          Azure.mkStdStorageUrl(AccountName("myaccount")),
+          MaxQueueSize(10),
+          DF.ldjson))
+    }
+
+    "succeeds reading config with activedirectory credentials" >> {
+      val s =
+        """
+          |{
+          |  "container": "mycontainer",
+          |  "credentials": { "auth": "activeDirectory", "clientId": "myid", "tenantId": "mytenant", "clientSecret": "mysecret" },
+          |  "storageUrl": "https://myaccount.blob.core.windows.net/",
+          |  "maxQueueSize": 10,
+          |  "resourceType": "ldjson"
+          |}
+        """.stripMargin
+
+      s.decodeOption[AzureConfig] must_=== Some(
+        AzureConfig(
+          ContainerName("mycontainer"),
+          Some(AzureCredentials.ActiveDirectory(ClientId("myid"), TenantId("mytenant"), ClientSecret("mysecret"))),
+          Azure.mkStdStorageUrl(AccountName("myaccount")),
+          MaxQueueSize(10),
+          DF.ldjson))
+    }
+
+    "succeeds reading config with legacy credentials" >> {
       val s =
         """
           |{

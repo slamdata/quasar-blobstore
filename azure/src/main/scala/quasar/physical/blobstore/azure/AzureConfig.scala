@@ -22,17 +22,23 @@ import quasar.connector.DataFormat
 
 final case class AzureConfig(
     override val containerName: ContainerName,
-    override val credentials: Option[AzureCredentials.SharedKey],
+    override val credentials: Option[AzureCredentials],
     override val storageUrl: StorageUrl,
     override val maxQueueSize: Option[MaxQueueSize],
     format: DataFormat) extends Config {
 
   def sanitize: AzureConfig = copy(
-    credentials = credentials.map(_ => AzureConfig.RedactedCreds))
+    credentials = credentials.map(_ match {
+      case AzureCredentials.SharedKey(_,_) => AzureConfig.RedactedSharedKey
+      case AzureCredentials.ActiveDirectory(_,_,_) => AzureConfig.RedactedActiveDirectory
+    }))
 
   def isSensitive: Boolean = credentials match {
     case None => false
-    case Some(cs) => !(cs.accountName.value.isEmpty && cs.accountKey.value.isEmpty)
+    case Some(AzureCredentials.SharedKey(accountName, accountKey)) =>
+      !(accountName.value.isEmpty && accountKey.value.isEmpty)
+    case Some(AzureCredentials.ActiveDirectory(clientId, tenantId, clientSecret)) =>
+      !(clientId.value.isEmpty && tenantId.value.isEmpty && clientSecret.value.isEmpty)
   }
 
   def reconfigureNonSensitive(patch: AzureConfig): Either[AzureConfig, AzureConfig] =
@@ -47,9 +53,14 @@ final case class AzureConfig(
 }
 
 object AzureConfig {
-  val RedactedCreds =
+  val RedactedSharedKey =
     AzureCredentials.SharedKey(
       AccountName("<REDACTED>"),
       AccountKey("<REDACTED>"))
 
+  val RedactedActiveDirectory =
+    AzureCredentials.ActiveDirectory(
+      ClientId("<REDACTED>"),
+      TenantId("<REDACTED>"),
+      ClientSecret("<REDACTED>"))
 }
