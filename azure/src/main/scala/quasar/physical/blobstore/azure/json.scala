@@ -24,6 +24,37 @@ import quasar.connector.{CompressionScheme, DataFormat}, DataFormat._
 import argonaut._, Argonaut._
 
 object json {
+  implicit val credentialsCodec: CodecJson[AzureCredentials] =
+    CodecJson({
+      case AzureCredentials.SharedKey(AccountName(an), AccountKey(ak)) =>
+        argonaut.Json.obj(
+          "auth" := "sharedKey",
+          "accountName" := an,
+          "accountKey" := ak)
+      case AzureCredentials.ActiveDirectory(ClientId(cid), TenantId(tid), ClientSecret(cs)) =>
+        argonaut.Json.obj(
+          "auth" := "activeDirectory",
+          "clientId" := cid,
+          "tenantId" := tid,
+          "clientSecret" := cs)
+    }, c => for {
+      auth <- c.get[String]("auth") ||| DecodeResult.ok("sharedKey")
+      credentials <- auth match {
+        case "sharedKey" => for {
+          an <- c.get[String]("accountName")
+          ak <- c.get[String]("accountKey")
+        } yield AzureCredentials.SharedKey(AccountName(an), AccountKey(ak))
+
+        case "activeDirectory" => for {
+          cid <- c.get[String]("clientId")
+          tid <- c.get[String]("tenantId")
+          cs <- c.get[String]("clientSecret")
+        } yield AzureCredentials.ActiveDirectory(ClientId(cid), TenantId(tid), ClientSecret(cs))
+
+        case _ => DecodeResult.fail("auth must be 'sharedKey' or 'activeDirectory", c.history)
+      }
+    } yield credentials)
+
   implicit val decodeContainerName: DecodeJson[ContainerName] = jdecode1(ContainerName(_))
   implicit val decodeStorageUrl: DecodeJson[StorageUrl] = jdecode1(StorageUrl(_))
   implicit val decodeAccountName: DecodeJson[AccountName] = jdecode1(AccountName(_))
@@ -40,9 +71,6 @@ object json {
   implicit val encodeAccountName: EncodeJson[AccountName] = jencode1(_.value)
   implicit val encodeAccountKey: EncodeJson[AccountKey] = jencode1(_.value)
   implicit val encodeMaxQueueSize: EncodeJson[MaxQueueSize] = jencode1(_.value)
-
-  implicit val codecCredentials: CodecJson[AzureCredentials.SharedKey] =
-    casecodec2(AzureCredentials.SharedKey.apply, AzureCredentials.SharedKey.unapply)("accountName", "accountKey")
 
   val legacyDecodeFlatFormat: DecodeJson[DataFormat] = DecodeJson { c => c.as[String].flatMap {
     case "json" => DecodeResult.ok(DataFormat.json)
@@ -67,7 +95,7 @@ object json {
   }, (c => for {
     format <- c.as[DataFormat] ||| c.as(legacyDecodeDataFormat)
     container <- (c --\ "container").as[ContainerName]
-    credentials <- (c --\ "credentials").as[Option[AzureCredentials.SharedKey]]
+    credentials <- ((c --\ "credentials").as[Option[AzureCredentials]])
     storageUrl <- (c --\ "storageUrl").as[StorageUrl]
     maxQueueSize <- (c --\ "maxQueueSize").as[Option[MaxQueueSize]]
   } yield AzureConfig(container, credentials, storageUrl, maxQueueSize, format)))

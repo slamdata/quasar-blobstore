@@ -42,10 +42,20 @@ class AzureDatasourceModuleSpec extends Specification {
   implicit val cs: ContextShift[IO] = IO.contextShift(ec)
   implicit val timer: Timer[IO] = IO.timer(ec)
 
-  private def credToJson(cred: AzureCredentials.SharedKey): Json =
-    Json.obj(
-      "accountName" -> Json.jString(cred.accountName.value),
-      "accountKey" -> Json.jString(cred.accountKey.value))
+  private def credToJson(cred: AzureCredentials): Json =
+    cred match {
+      case AzureCredentials.SharedKey(accountName, accountKey) =>
+        Json.obj(
+          "auth" -> Json.jString("sharedKey"),
+          "accountName" -> Json.jString(accountName.value),
+          "accountKey" -> Json.jString(accountKey.value))
+      case AzureCredentials.ActiveDirectory(clientId, tenantId, clientSecret) =>
+        Json.obj(
+          "auth" -> Json.jString("activeDirectory"),
+          "clientId" -> Json.jString(clientId.value),
+          "tenantId" -> Json.jString(tenantId.value),
+          "clientSecret" -> Json.jString(clientSecret.value))
+    }
 
   private def init(j: Json) =
     RateLimiter[IO, UUID](1.0, IO.delay(UUID.randomUUID()), NoopRateLimitUpdater[IO, UUID]).flatMap(rl =>
@@ -195,6 +205,7 @@ class AzureDatasourceModuleSpec extends Specification {
 
       val expected = Json.obj(
         "credentials" -> Json.obj(
+          "auth" -> jString("sharedKey"),
           "accountName" -> jString("myaccount"),
           "accountKey" -> jString("mykey")),
         "container" -> jString("patched mycontainer"),
