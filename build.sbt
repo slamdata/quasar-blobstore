@@ -61,3 +61,4 @@ lazy val azure = project
       "com.precog" %% "async-blobstore-azure" % managedVersions.value("precog-async-blobstore"),
       "org.slf4j" % "slf4j-log4j12" % slf4jVersion % Test))
   .enablePlugins(QuasarPlugin)
+  .evictToLocal("QUASAR_PATH", "connector", true)

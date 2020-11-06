@@ -107,7 +107,7 @@ object AzureDatasourceModule extends LightweightDatasourceModule {
   }
 
 
-  override def migrateConfig[F[_]: Sync](config: Json): F[Either[ConfigurationError[Json], Json]] =
+  override def migrateConfig[F[_]: Sync](from: Long, to: Long, config: Json): F[Either[ConfigurationError[Json], Json]] =
     Sync[F].pure(Right(config))
 
   override def reconfigure(original: Json, patch: Json): Either[ConfigurationError[Json], (Reconfiguration, Json)] = {
