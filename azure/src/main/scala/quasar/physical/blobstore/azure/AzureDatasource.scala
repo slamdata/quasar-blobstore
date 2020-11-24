@@ -18,26 +18,44 @@ package quasar.physical
 package blobstore
 package azure
 
+import slamdata.Predef._
+
 import quasar.api.datasource.DatasourceType
 import quasar.blobstore.azure.{converters => _, _}
+import quasar.blobstore.services._
 import quasar.connector.MonadResourceErr
 
-import cats.effect.{ConcurrentEffect, ContextShift}
+import cats.effect.{ConcurrentEffect, ContextShift, Timer}
+import cats.effect.concurrent.Ref
+import cats.syntax.flatMap._
 import cats.syntax.functor._
+import com.azure.storage.blob.BlobContainerAsyncClient
 import com.azure.storage.blob.models.BlobProperties
 
 object AzureDatasource {
   val dsType: DatasourceType = DatasourceType("azure", 1L)
 
-  def mk[F[_]: ConcurrentEffect: ContextShift: MonadResourceErr](cfg: AzureConfig)
+  def withRefresh[F[_]: ConcurrentEffect, A](
+      refClient: Ref[F, Expires[BlobContainerAsyncClient]],
+      refreshToken: F[Unit],
+      f : BlobContainerAsyncClient => A)
+      : F[A] =
+    for {
+      _ <- refreshToken
+      client <- refClient.get
+    } yield f(client.value)
+
+  def mk[F[_]: ConcurrentEffect: ContextShift: MonadResourceErr: Timer](cfg: AzureConfig)
       : F[BlobstoreDatasource[F, BlobProperties]] =
-    Azure.mkContainerClient[F](cfg) map { c =>
+    for {
+      (refClient, refreshToken) <- Azure.refContainerClient[F](cfg)
+    } yield
       BlobstoreDatasource[F, BlobProperties](
         dsType,
         cfg.format,
-        AzureStatusService.mk(c.value),
-        AzureListService.mk[F](c.value),
-        AzurePropsService.mk[F](c.value),
-        AzureGetService.mk(c.value))
-    }
+        withRefresh[F, StatusService[F]](refClient, refreshToken, AzureStatusService.mk[F](_)),
+        withRefresh[F, ListService[F]](refClient, refreshToken, AzureListService.mk[F](_)),
+        withRefresh[F, PropsService[F, BlobProperties]](refClient, refreshToken, AzurePropsService.mk[F](_)),
+        withRefresh[F, GetService[F]](refClient, refreshToken, AzureGetService.mk(_)))
+
 }
