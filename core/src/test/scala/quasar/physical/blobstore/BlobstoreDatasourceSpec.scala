@@ -184,7 +184,7 @@ abstract class BlobstoreDatasourceSpec extends Specification with CatsIO {
     datasource use { ds =>
       ds.loadFull(iRead(path)).value use {
         case Some(QueryResult.Typed(_, data, ScalarStages.Id)) =>
-          data.compile.to(Array).map(_ must_=== expected)
+          data.data.compile.to(Array).map(_ must_=== expected)
 
         case _ =>
           ko("Unexpected QueryResult").pure[IO]

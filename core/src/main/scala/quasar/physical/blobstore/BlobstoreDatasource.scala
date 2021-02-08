@@ -50,7 +50,7 @@ class BlobstoreDatasource[F[_]: Monad: MonadResourceErr, P](
     Resource.liftF(for {
       optBytes <- (converters.resourcePathToBlobPathK[F] andThen getService).apply(iRead.path)
       bytes <- optBytes.map(_.pure[F]).getOrElse(raisePathNotFound(iRead.path))
-      qr = QueryResult.typed[F](format, bytes, iRead.stages)
+      qr = QueryResult.typed[F](format, ResultData.Continuous(bytes), iRead.stages)
     } yield qr)
   }))
 
