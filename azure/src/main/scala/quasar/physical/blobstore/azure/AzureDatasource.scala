@@ -18,26 +18,52 @@ package quasar.physical
 package blobstore
 package azure
 
+import slamdata.Predef._
+
 import quasar.api.datasource.DatasourceType
 import quasar.blobstore.azure.{converters => _, _}
 import quasar.connector.MonadResourceErr
 
-import cats.effect.{ConcurrentEffect, ContextShift}
+import cats.Monad
+import cats.data.Kleisli
+import cats.effect.{ConcurrentEffect, ContextShift, Timer}
+import cats.effect.concurrent.Ref
+import cats.syntax.flatMap._
 import cats.syntax.functor._
+import com.azure.storage.blob.BlobContainerAsyncClient
 import com.azure.storage.blob.models.BlobProperties
 
 object AzureDatasource {
   val dsType: DatasourceType = DatasourceType("azure", 1L)
 
-  def mk[F[_]: ConcurrentEffect: ContextShift: MonadResourceErr](cfg: AzureConfig)
+  private def withRefresh[F[_]: Monad, A, B](
+      refClient: Ref[F, Expires[BlobContainerAsyncClient]],
+      refreshToken: F[Unit],
+      f: BlobContainerAsyncClient => Kleisli[F, A, B])
+      : Kleisli[F, A, B] =
+    Kleisli { a =>
+      for {
+        _ <- refreshToken
+        client <- refClient.get
+        b <- f(client.value).run(a)
+      } yield b
+    }
+
+  def mk[F[_]: ConcurrentEffect: ContextShift: MonadResourceErr: Timer](cfg: AzureConfig)
       : F[BlobstoreDatasource[F, BlobProperties]] =
-    Azure.mkContainerClient[F](cfg) map { c =>
+    for {
+      (refClient, refreshToken) <- Azure.refContainerClient[F](cfg)
+    } yield
       BlobstoreDatasource[F, BlobProperties](
         dsType,
         cfg.format,
-        AzureStatusService.mk(c.value),
-        AzureListService.mk[F](c.value),
-        AzurePropsService.mk[F](c.value),
-        AzureGetService.mk(c.value))
-    }
+        for {
+          _ <- refreshToken
+          client <- refClient.get
+          svc <- AzureStatusService.mk[F](client.value)
+        } yield svc,
+        withRefresh(refClient, refreshToken, AzureListService.mk[F](_)),
+        withRefresh(refClient, refreshToken, AzurePropsService.mk[F](_)),
+        withRefresh(refClient, refreshToken, AzureGetService.mk[F](_)))
+
 }
