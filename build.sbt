@@ -39,6 +39,8 @@ lazy val core = project
       "org.specs2" %% "specs2-scalaz" % specsVersion % Test,
       "org.specs2" %% "specs2-scalacheck" % specsVersion % Test,
       "com.codecommit" %% "cats-effect-testing-specs2" % "0.4.0"))
+  .evictToLocal("QUASAR_PATH", "connector", true)
+  .evictToLocal("QUASAR_PATH", "api", true)
 
 lazy val azure = project
   .in(file("azure"))
@@ -62,3 +64,4 @@ lazy val azure = project
       "org.slf4j" % "slf4j-log4j12" % slf4jVersion % Test))
   .enablePlugins(QuasarPlugin)
   .evictToLocal("QUASAR_PATH", "connector", true)
+  .evictToLocal("QUASAR_PATH", "api", true)
