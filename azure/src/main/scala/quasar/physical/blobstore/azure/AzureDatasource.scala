@@ -54,7 +54,7 @@ object AzureDatasource {
     for {
       (refClient, refreshToken) <- Azure.refContainerClient[F](cfg)
     } yield
-      BlobstoreDatasource[F, BlobProperties](
+      BlobstoreDatasource.mk[F, BlobProperties](
         dsType,
         cfg.format,
         for {
