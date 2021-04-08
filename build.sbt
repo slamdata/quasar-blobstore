@@ -19,32 +19,13 @@ lazy val publishTestsSettings = Seq(
 lazy val root = project
   .in(file("."))
   .settings(noPublishSettings)
-  .aggregate(core, azure)
+  .aggregate(azure)
 
 val slf4jVersion = "1.7.25"
 val specsVersion = "4.8.3"
 
-lazy val core = project
-  .in(file("core"))
-  .settings(addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1"))
-  .settings(publishTestsSettings)
-  .settings(
-    name := "quasar-datasource-blobstore-core",
-    libraryDependencies ++= Seq(
-      "com.precog" %% "async-blobstore-core" % managedVersions.value("precog-async-blobstore"),
-      "com.precog" %% "quasar-connector" % managedVersions.value("precog-quasar"),
-      "com.precog" %% "quasar-connector" % managedVersions.value("precog-quasar") % Test classifier "tests",
-      "com.precog" %% "quasar-foundation" % managedVersions.value("precog-quasar") % Test classifier "tests",
-      "org.specs2" %% "specs2-core" % specsVersion % Test,
-      "org.specs2" %% "specs2-scalaz" % specsVersion % Test,
-      "org.specs2" %% "specs2-scalacheck" % specsVersion % Test,
-      "com.codecommit" %% "cats-effect-testing-specs2" % "0.4.0"))
-  .evictToLocal("QUASAR_PATH", "connector", true)
-  .evictToLocal("QUASAR_PATH", "api", true)
-
 lazy val azure = project
   .in(file("azure"))
-  .dependsOn(core % "compile->compile;test->test")
   .settings(addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1"))
   .settings(
     name := "quasar-datasource-azure",
@@ -61,7 +42,9 @@ lazy val azure = project
       */
     quasarPluginDependencies ++= Seq(
       "com.precog" %% "async-blobstore-azure" % managedVersions.value("precog-async-blobstore"),
+      "com.precog" %% "quasar-lib-blobstore" % managedVersions.value("precog-quasar-lib-blobstore") % "compile->compile;test->test",
       "org.slf4j" % "slf4j-log4j12" % slf4jVersion % Test))
   .enablePlugins(QuasarPlugin)
   .evictToLocal("QUASAR_PATH", "connector", true)
   .evictToLocal("QUASAR_PATH", "api", true)
+  .evictToLocal("ASYNC_BLOBSTORE_PATH", "gcs", true)
