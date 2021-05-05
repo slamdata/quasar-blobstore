@@ -18,7 +18,7 @@ package quasar.physical.blobstore.azure
 
 import slamdata.Predef._
 
-import quasar.{RateLimiter, NoopRateLimitUpdater}
+import quasar.RateLimiter
 import quasar.connector.datasource.Reconfiguration
 import quasar.api.datasource.DatasourceError, DatasourceError._
 import quasar.connector.{ByteStore, DataFormat}
@@ -58,10 +58,10 @@ class AzureDatasourceModuleSpec extends Specification {
     }
 
   private def init(j: Json) =
-    RateLimiter[IO, UUID](1.0, IO.delay(UUID.randomUUID()), NoopRateLimitUpdater[IO, UUID]).flatMap(rl =>
-      AzureDatasourceModule.lightweightDatasource[IO, UUID](j, rl, ByteStore.void[IO], _ => IO(None))
-        .use(r => IO.pure(r.void)))
-        .unsafeRunSync()
+    RateLimiter[IO, UUID](IO.delay(UUID.randomUUID())).flatMap(rl =>
+      AzureDatasourceModule.lightweightDatasource[IO, UUID](j, rl, ByteStore.void[IO], _ => IO(None)))
+      .use(r => IO.pure(r.void))
+      .unsafeRunSync()
 
   private def cfgToJson(cfg: AzureConfig, stripNulls: Boolean = true): Json = {
     val js =
