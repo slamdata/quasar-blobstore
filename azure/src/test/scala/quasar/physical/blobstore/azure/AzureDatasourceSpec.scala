@@ -29,7 +29,7 @@ abstract class AzureDatasourceSpec extends BlobstoreDatasourceSpec {
   val cfg: AzureConfig
 
   override def datasource: Resource[IO, LightweightDatasourceModule.DS[IO]] =
-    Resource.liftF(AzureDatasource.mk[IO](cfg))
+    Resource.eval(AzureDatasource.mk[IO](cfg))
 }
 
 object AzureDatasourceSpec {
