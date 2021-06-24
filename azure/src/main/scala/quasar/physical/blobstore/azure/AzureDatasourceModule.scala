@@ -77,7 +77,7 @@ object AzureDatasourceModule extends LightweightDatasourceModule {
           }
         } yield res
 
-        Resource.liftF(ApplicativeError[F, Throwable].handleError(r) {
+        Resource.eval(ApplicativeError[F, Throwable].handleError(r) {
           case _: MalformedURLException =>
             Left(DatasourceError
               .invalidConfiguration[Json, InitializationError[Json]](kind, sanitizedJson, NonEmptyList("Invalid storage url")))
