@@ -19,7 +19,7 @@ package azure
 
 import quasar.contrib.scalaz.MonadError_
 import quasar.connector.ResourceError
-import quasar.connector.datasource.LightweightDatasourceModule
+import quasar.connector.datasource.DatasourceModule
 
 import cats.effect.{IO, Resource}
 
@@ -28,7 +28,7 @@ abstract class AzureDatasourceSpec extends BlobstoreDatasourceSpec {
 
   val cfg: AzureConfig
 
-  override def datasource: Resource[IO, LightweightDatasourceModule.DS[IO]] =
+  override def datasource: Resource[IO, DatasourceModule.DS[IO]] =
     Resource.eval(AzureDatasource.mk[IO](cfg))
 }
 

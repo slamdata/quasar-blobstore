@@ -48,3 +48,4 @@ lazy val azure = project
   .evictToLocal("QUASAR_PATH", "connector", true)
   .evictToLocal("QUASAR_PATH", "api", true)
   .evictToLocal("ASYNC_BLOBSTORE_PATH", "gcs", true)
+  .evictToLocal("BLOBSTORE_PATH", "core", true)
