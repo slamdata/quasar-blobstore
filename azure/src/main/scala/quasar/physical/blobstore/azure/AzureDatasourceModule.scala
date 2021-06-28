@@ -22,7 +22,7 @@ import quasar.RateLimiting
 import quasar.api.datasource.{DatasourceError, DatasourceType}, DatasourceError._
 import quasar.blobstore.BlobstoreStatus
 import quasar.connector.{ByteStore, MonadResourceErr, ExternalCredentials}
-import quasar.connector.datasource.{LightweightDatasourceModule, Reconfiguration}
+import quasar.connector.datasource.{DatasourceModule, Reconfiguration}
 import quasar.physical.blobstore.azure.json._
 
 import java.net.{MalformedURLException, UnknownHostException}
@@ -37,12 +37,12 @@ import cats.kernel.Hash
 import cats.implicits._
 import scalaz.NonEmptyList
 
-object AzureDatasourceModule extends LightweightDatasourceModule {
+object AzureDatasourceModule extends DatasourceModule {
 
   override def kind: DatasourceType = AzureDatasource.dsType
 
   @SuppressWarnings(Array("org.wartremover.warts.ImplicitParameter"))
-  override def lightweightDatasource[
+  override def datasource[
       F[_]: ConcurrentEffect: ContextShift: MonadResourceErr: Timer,
       A: Hash](
       json: Json,
@@ -50,7 +50,7 @@ object AzureDatasourceModule extends LightweightDatasourceModule {
       byteStore: ByteStore[F],
       getAuth: UUID => F[Option[ExternalCredentials[F]]])(
       implicit ec: ExecutionContext)
-      : Resource[F, Either[InitializationError[Json], LightweightDatasourceModule.DS[F]]] = {
+      : Resource[F, Either[InitializationError[Json], DatasourceModule.DS[F]]] = {
 
     val sanitizedJson = sanitizeConfig(json)
 
@@ -94,7 +94,7 @@ object AzureDatasourceModule extends LightweightDatasourceModule {
       case Left((msg, _)) =>
         DatasourceError
           .invalidConfiguration[Json, InitializationError[Json]](kind, sanitizedJson, NonEmptyList(msg))
-          .asLeft[LightweightDatasourceModule.DS[F]]
+          .asLeft[DatasourceModule.DS[F]]
           .pure[Resource[F, ?]]
     }
   }
