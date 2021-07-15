@@ -22,7 +22,7 @@ lazy val root = project
   .aggregate(azure)
 
 val slf4jVersion = "1.7.25"
-val specsVersion = "4.8.3"
+val specsVersion = "4.9.2"
 
 lazy val azure = project
   .in(file("azure"))
